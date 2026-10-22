@@ -5,16 +5,18 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <dl class="grid gap-x-8 text-sm md:grid-cols-2">
-        <div>
-            <x-ui.info-item icon="id-card" label="Role">{{ $user->role?->name ?? 'No role' }}</x-ui.info-item>
-            <x-ui.info-item icon="info" label="Email">{{ $user->email }}</x-ui.info-item>
-        </div>
-        <div>
-            <x-ui.info-item icon="info" label="Phone">{{ $user->phone ?? '—' }}</x-ui.info-item>
-            <x-ui.info-item icon="calendar" label="Created">{{ $user->created_at->format('j M Y, H:i') }}</x-ui.info-item>
-        </div>
-    </dl>
+    <x-ui.card>
+        <dl class="grid gap-x-8 text-sm md:grid-cols-2">
+            <div>
+                <x-ui.info-item icon="id-card" label="Role">{{ $user->role?->name ?? 'No role' }}</x-ui.info-item>
+                <x-ui.info-item icon="info" label="Email">{{ $user->email }}</x-ui.info-item>
+            </div>
+            <div>
+                <x-ui.info-item icon="info" label="Phone">{{ $user->phone ?? '—' }}</x-ui.info-item>
+                <x-ui.info-item icon="calendar" label="Created">{{ $user->created_at->format('j M Y, H:i') }}</x-ui.info-item>
+            </div>
+        </dl>
+    </x-ui.card>
 
     <x-ui.card title="Latest flights as pilot" class="mt-6">
         @include('partials.flights-table', ['flights' => $flights, 'actions' => ['present', 'view'], 'showLocation' => true])

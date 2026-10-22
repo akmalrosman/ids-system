@@ -18,26 +18,28 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <dl class="grid gap-x-8 text-sm md:grid-cols-2">
-        <div>
-            <x-ui.info-item icon="circle-user" label="Pilot">{{ $flight->pilot?->name ?? '—' }}</x-ui.info-item>
-            <x-ui.info-item icon="circle-user" label="WSO">{{ $flight->wso?->name ?? '—' }}</x-ui.info-item>
-            <x-ui.info-item icon="calendar" label="Date">{{ $flight->flown_at->format('Y-m-d H:i:s') }}</x-ui.info-item>
-            <x-ui.info-item icon="timer" label="Duration">{{ Duration::human($flight->duration_seconds) }}</x-ui.info-item>
-            <x-ui.info-item icon="plane" label="Aircraft">
-                <a href="{{ route('aircraft.show', $flight->aircraft) }}" class="hover:text-neutral-100">{{ $flight->aircraft->label() }}</a>
-            </x-ui.info-item>
-        </div>
-        <div>
-            <x-ui.info-item icon="plane-takeoff" label="Flight Number">{{ $flight->flight_number }}</x-ui.info-item>
-            <x-ui.info-item icon="hash" label="Shift Number">{{ $flight->shift_number ?? '—' }}</x-ui.info-item>
-            <x-ui.info-item icon="map-pin" label="Location">{{ $flight->location ?? '—' }}</x-ui.info-item>
-            <x-ui.info-item icon="radar" label="Group / Formation">{{ $flight->groups->pluck('title')->join(', ') ?: '—' }}</x-ui.info-item>
-            @if ($flight->remarks)
-                <x-ui.info-item icon="info" label="Remarks">{{ $flight->remarks }}</x-ui.info-item>
-            @endif
-        </div>
-    </dl>
+    <x-ui.card>
+        <dl class="grid gap-x-8 text-sm md:grid-cols-2">
+            <div>
+                <x-ui.info-item icon="circle-user" label="Pilot">{{ $flight->pilot?->name ?? '—' }}</x-ui.info-item>
+                <x-ui.info-item icon="circle-user" label="WSO">{{ $flight->wso?->name ?? '—' }}</x-ui.info-item>
+                <x-ui.info-item icon="calendar" label="Date">{{ $flight->flown_at->format('Y-m-d H:i:s') }}</x-ui.info-item>
+                <x-ui.info-item icon="timer" label="Duration">{{ Duration::human($flight->duration_seconds) }}</x-ui.info-item>
+                <x-ui.info-item icon="plane" label="Aircraft">
+                    <a href="{{ route('aircraft.show', $flight->aircraft) }}" class="hover:text-neutral-100">{{ $flight->aircraft->label() }}</a>
+                </x-ui.info-item>
+            </div>
+            <div>
+                <x-ui.info-item icon="plane-takeoff" label="Flight Number">{{ $flight->flight_number }}</x-ui.info-item>
+                <x-ui.info-item icon="hash" label="Shift Number">{{ $flight->shift_number ?? '—' }}</x-ui.info-item>
+                <x-ui.info-item icon="map-pin" label="Location">{{ $flight->location ?? '—' }}</x-ui.info-item>
+                <x-ui.info-item icon="radar" label="Group / Formation">{{ $flight->groups->pluck('title')->join(', ') ?: '—' }}</x-ui.info-item>
+                @if ($flight->remarks)
+                    <x-ui.info-item icon="info" label="Remarks">{{ $flight->remarks }}</x-ui.info-item>
+                @endif
+            </div>
+        </dl>
+    </x-ui.card>
 
     {{-- FDR status --}}
     <div class="mt-6 grid gap-4 lg:grid-cols-3">

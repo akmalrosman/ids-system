@@ -1,10 +1,13 @@
 <x-layouts.app title="Roles" :breadcrumbs="['Roles' => route('roles.index'), 'All' => null]">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <x-ui.search placeholder="Search roles..." />
-        <x-ui.button :href="route('roles.create')">Create Role</x-ui.button>
-    </div>
+    <x-ui.page-header title="Roles" description="Sets of permissions given to users.">
+        <x-slot:actions>
+            <x-ui.button :href="route('roles.create')" icon="id-card">Create Role</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-    <div class="overflow-x-auto">
+    <x-ui.search placeholder="Search roles..." class="mb-4" />
+
+    <x-ui.table-card class="overflow-x-auto">
         <table class="data-table">
             <thead>
             <tr>
@@ -37,5 +40,5 @@
             @endforelse
             </tbody>
         </table>
-    </div>
+    </x-ui.table-card>
 </x-layouts.app>

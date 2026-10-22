@@ -7,16 +7,18 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <dl class="grid gap-x-8 text-sm md:grid-cols-2">
-        <div>
-            <x-ui.info-item icon="info" label="Manufacturer">{{ $type->manufacturer }}</x-ui.info-item>
-            <x-ui.info-item icon="plane" label="Model">{{ $type->model }}</x-ui.info-item>
-        </div>
-        <div>
-            <x-ui.info-item icon="box" label="3D model">{{ $type->model_path ? 'Uploaded' : 'Default (Su-30)' }}</x-ui.info-item>
-            <x-ui.info-item icon="arrow-up-down" label="Length / offset">{{ $type->model_length_m }} m · {{ $type->model_yaw_offset_deg }}°</x-ui.info-item>
-        </div>
-    </dl>
+    <x-ui.card>
+        <dl class="grid gap-x-8 text-sm md:grid-cols-2">
+            <div>
+                <x-ui.info-item icon="info" label="Manufacturer">{{ $type->manufacturer }}</x-ui.info-item>
+                <x-ui.info-item icon="plane" label="Model">{{ $type->model }}</x-ui.info-item>
+            </div>
+            <div>
+                <x-ui.info-item icon="box" label="3D model">{{ $type->model_path ? 'Uploaded' : 'Default (Su-30)' }}</x-ui.info-item>
+                <x-ui.info-item icon="arrow-up-down" label="Length / offset">{{ $type->model_length_m }} m · {{ $type->model_yaw_offset_deg }}°</x-ui.info-item>
+            </div>
+        </dl>
+    </x-ui.card>
 
     <x-ui.card title="Aircraft of this type" class="mt-6">
         <div class="flex flex-wrap gap-2">

@@ -1,12 +1,15 @@
 <x-layouts.app title="Aircraft" :breadcrumbs="['Aircraft' => route('aircraft.index'), 'All' => null]">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <x-ui.search placeholder="Search number, registration, serial, type..." />
+    <x-ui.page-header title="Aircrafts" description="Every airframe that can be assigned to a flight.">
         @can(\App\Support\Permission::AIRCRAFT_MANAGE)
-            <x-ui.button :href="route('aircraft.create')">Add Aircraft</x-ui.button>
+            <x-slot:actions>
+                <x-ui.button :href="route('aircraft.create')" icon="plane">Add Aircraft</x-ui.button>
+            </x-slot:actions>
         @endcan
-    </div>
+    </x-ui.page-header>
 
-    <div class="overflow-x-auto">
+    <x-ui.search placeholder="Search number, registration, serial, type..." class="mb-4" />
+
+    <x-ui.table-card class="overflow-x-auto">
         <table class="data-table">
             <thead>
             <tr>
@@ -44,6 +47,6 @@
             @endforelse
             </tbody>
         </table>
-    </div>
+    </x-ui.table-card>
     {{ $aircraft->links('partials.pagination') }}
 </x-layouts.app>

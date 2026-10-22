@@ -1,10 +1,13 @@
 <x-layouts.app title="Users" :breadcrumbs="['Users' => route('users.index'), 'All' => null]">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <x-ui.search placeholder="Search name, email, phone..." />
-        <x-ui.button :href="route('users.create')">Create User</x-ui.button>
-    </div>
+    <x-ui.page-header title="Users" description="People who can log in, and the role that decides what they can do.">
+        <x-slot:actions>
+            <x-ui.button :href="route('users.create')" icon="users">Create User</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-    <div class="overflow-x-auto">
+    <x-ui.search placeholder="Search name, email, phone..." class="mb-4" />
+
+    <x-ui.table-card class="overflow-x-auto">
         <table class="data-table">
             <thead>
             <tr>
@@ -36,6 +39,6 @@
             @endforelse
             </tbody>
         </table>
-    </div>
+    </x-ui.table-card>
     {{ $users->links('partials.pagination') }}
 </x-layouts.app>
