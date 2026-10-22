@@ -2,13 +2,12 @@ import * as THREE from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
 const G = 9.81;
 const DEG = Math.PI / 180;
 
 /**
- * One aircraft in the presentation: its telemetry, 3D model, flight path and label.
+ * One aircraft in the presentation: its telemetry, 3D model and flight path.
  *
  * Times: the presentation has one global timeline (seconds). This flight's
  * telemetry starts at `config.startOffset` on that timeline.
@@ -54,7 +53,6 @@ export class FlightTrack {
         this.buildPath();
         this.buildAircraft(template);
         this.buildDropLine();
-        this.buildLabel();
 
         this.state = null;
     }
@@ -86,6 +84,12 @@ export class FlightTrack {
         this.model = template.clone();
         this.pivot.add(this.model);
         this.object.add(this.pivot);
+
+        // Clones share the template's materials; remember them so colouring can be undone.
+        this.meshes = [];
+        this.model.traverse((child) => {
+            if (child.isMesh) this.meshes.push({ mesh: child, original: child.material, colored: null });
+        });
     }
 
     /** Vertical line from the aircraft to the ground: helps judge height. */
@@ -96,17 +100,6 @@ export class FlightTrack {
         this.object.add(this.dropLine);
     }
 
-    buildLabel() {
-        // CSS2DRenderer overwrites the outer element's transform, so the offset goes on the inner one.
-        const outer = document.createElement('div');
-        const el = document.createElement('div');
-        el.className = 'pointer-events-none relative -top-5 rounded px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-white shadow';
-        el.style.background = this.config.color;
-        outer.appendChild(el);
-        this.labelEl = el;
-        this.label = new CSS2DObject(outer);
-        this.object.add(this.label);
-    }
 
     /** Heading from the ground track, pitch from climb angle, bank from turn rate. */
     attitudeFromPath(ch) {
@@ -182,8 +175,6 @@ export class FlightTrack {
         drop.setXYZ(1, x, 0, z);
         drop.needsUpdate = true;
 
-        this.label.position.set(x, y, z);
-
         this.state = {
             localTime: local,
             alt: lerp(this.alt[i], this.alt[j], f),
@@ -194,8 +185,6 @@ export class FlightTrack {
             active,
         };
 
-        this.labelEl.textContent = `${this.config.label} · ${Math.round(this.state.alt * 3.28084)} ft`;
-        this.labelEl.style.opacity = active ? '1' : '0.5';
         return this.state;
     }
 
@@ -226,6 +215,18 @@ export class FlightTrack {
         this.model.visible = visible;
     }
 
+    /** Paints the whole model in this flight's colour (true) or restores its own colours (false). */
+    setModelColored(colored) {
+        for (const part of this.meshes) {
+            if (colored && !part.colored) {
+                part.colored = part.original.clone();
+                part.colored.map = null;
+                part.colored.color?.copy(this.color);
+            }
+            part.mesh.material = colored ? part.colored : part.original;
+        }
+    }
+
     setLineWidth(px) {
         this.pathMaterial.linewidth = px;
         this.trailMaterial.linewidth = px;
@@ -254,7 +255,7 @@ export class FlightTrack {
         this.trailMaterial.dispose();
         this.dropLine.geometry.dispose();
         this.dropLine.material.dispose();
-        this.labelEl.remove();
+        this.meshes.forEach((part) => part.colored?.dispose());
     }
 }
 

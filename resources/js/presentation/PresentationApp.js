@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { LocalProjection } from './geo.js';
 import { TileMap } from './TileMap.js';
 import { CameraRig } from './CameraRig.js';
@@ -9,6 +8,12 @@ import { loadAircraftTemplate } from './AircraftModels.js';
 
 /** With aircraft scale "Auto", models are drawn at least this many pixels long. */
 const AUTO_SCALE_MIN_PX = 48;
+
+/** How the presentation looks when it first opens (the UI controls start in the same state). */
+export const INITIAL_VIEW = {
+    modelScale: 10,
+    pathsVisible: false,
+};
 
 /**
  * Owns the Three.js scene: renderer, map, aircraft, camera and the clock.
@@ -25,7 +30,7 @@ export class PresentationApp {
         /** @type {FlightTrack[]} */
         this.tracks = [];
         this.failed = [];
-        this.modelScale = 1;
+        this.modelScale = INITIAL_VIEW.modelScale;
         this.frameListeners = new Set();
     }
 
@@ -74,7 +79,8 @@ export class PresentationApp {
         const duration = Math.max(1, ...this.tracks.map((t) => t.endTime));
         this.playback = new Playback(duration);
 
-        this.setModelScale('auto');
+        this.setModelScale(INITIAL_VIEW.modelScale);
+        this.setAllPathsVisible(INITIAL_VIEW.pathsVisible);
         this.resize();
         this.fitAll({ remember: true });
         this.updateTracks();
@@ -103,10 +109,6 @@ export class PresentationApp {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.domElement.className = 'absolute inset-0 block';
         this.container.appendChild(this.renderer.domElement);
-
-        this.labelRenderer = new CSS2DRenderer();
-        this.labelRenderer.domElement.className = 'pointer-events-none absolute inset-0';
-        this.container.appendChild(this.labelRenderer.domElement);
 
         new ResizeObserver(() => this.resize()).observe(this.container);
     }
@@ -147,7 +149,6 @@ export class PresentationApp {
             this.applyAutoScale();
             this.map.update(this.rig.camera, this.rig.target);
             this.renderer.render(this.scene, this.rig.camera);
-            this.labelRenderer.render(this.scene, this.rig.camera);
             this.frameListeners.forEach((fn) => fn());
         });
     }
@@ -166,7 +167,6 @@ export class PresentationApp {
         const { clientWidth: w, clientHeight: h } = this.container;
         if (!w || !h) return;
         this.renderer.setSize(w, h);
-        this.labelRenderer.setSize(w, h);
         this.rig.setAspect(w / h);
         this.tracks.forEach((t) => t.setResolution(w, h));
     }

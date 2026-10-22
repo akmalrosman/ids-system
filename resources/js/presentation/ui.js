@@ -1,4 +1,5 @@
 import { formatClock, formatWallClock } from './format.js';
+import { INITIAL_VIEW } from './PresentationApp.js';
 
 const M_TO_FT = 3.28084;
 const MS_TO_KT = 1.94384;
@@ -41,14 +42,17 @@ export function bindUi(app, root) {
     $('[data-action="zoom-in"]').addEventListener('click', () => app.zoomBy(0.5));
     $('[data-action="zoom-out"]').addEventListener('click', () => app.zoomBy(2));
 
-    let allPaths = true;
+    let allPaths = INITIAL_VIEW.pathsVisible;
     const pathsBtn = $('[data-action="paths"]');
+    const syncPathButtons = () => {
+        showToggle(pathsBtn, allPaths);
+        $$('[data-card-action="path"]').forEach((b) => showToggle(b, allPaths));
+    };
     pathsBtn.addEventListener('click', () => {
         allPaths = !allPaths;
         app.setAllPathsVisible(allPaths);
-        pathsBtn.classList.toggle('opacity-50', !allPaths);
-        $$('[data-card-action="path"]').forEach((b) => b.classList.toggle('opacity-40', !allPaths));
         cards.forEach((c) => (c.pathVisible = allPaths));
+        syncPathButtons();
     });
 
     const widthSelect = $('[data-control="linewidth"]');
@@ -63,14 +67,18 @@ export function bindUi(app, root) {
             el,
             video: el?.querySelector('video[data-video]') ?? null,
             fields: Object.fromEntries([...(el?.querySelectorAll('[data-field]') ?? [])].map((f) => [f.dataset.field, f])),
-            pathVisible: true,
+            pathVisible: INITIAL_VIEW.pathsVisible,
             modelVisible: true,
+            videoVisible: true,
+            colored: false,
         };
         el?.querySelectorAll('[data-card-action]').forEach((btn) =>
             btn.addEventListener('click', () => onCardAction(card, btn.dataset.cardAction, btn)),
         );
+        showToggle(el?.querySelector('[data-card-action="color"]'), card.colored);
         return card;
     });
+    syncPathButtons();
 
     // Cards for flights whose telemetry failed to load.
     for (const { flight } of app.failed) {
@@ -82,11 +90,21 @@ export function bindUi(app, root) {
         if (action === 'path') {
             card.pathVisible = !card.pathVisible;
             card.track.setPathVisible(card.pathVisible);
-            btn.classList.toggle('opacity-40', !card.pathVisible);
+            showToggle(btn, card.pathVisible);
         } else if (action === 'model') {
             card.modelVisible = !card.modelVisible;
             card.track.setModelVisible(card.modelVisible);
-            btn.classList.toggle('opacity-40', !card.modelVisible);
+            showToggle(btn, card.modelVisible);
+        } else if (action === 'color') {
+            card.colored = !card.colored;
+            card.track.setModelColored(card.colored);
+            showToggle(btn, card.colored);
+        } else if (action === 'video') {
+            card.videoVisible = !card.videoVisible;
+            card.el.querySelector('[data-card-video]')?.classList.toggle('hidden', !card.videoVisible);
+            if (!card.videoVisible) card.video?.pause();
+            else syncVideos(true);
+            showToggle(btn, card.videoVisible);
         } else if (action === 'follow') {
             app.rig.follow(app.rig.following === card.track ? null : card.track);
         } else if (action === 'mute' && card.video) {
@@ -143,8 +161,8 @@ export function bindUi(app, root) {
 
     /** Keeps each BVR video at the same moment as its aircraft. */
     function syncVideos(force) {
-        for (const { video, track } of cards) {
-            if (!video || !track.state || Number.isNaN(video.duration)) continue;
+        for (const { video, track, videoVisible } of cards) {
+            if (!video || !videoVisible || !track.state || Number.isNaN(video.duration)) continue;
 
             const videoTime = track.state.localTime - (track.config.video?.offset ?? 0);
             const inRange = videoTime >= 0 && videoTime <= video.duration;
@@ -173,4 +191,9 @@ export function bindUi(app, root) {
         set('battery', s.battery === null ? '—' : `${s.battery}%`);
         set('time', s.active ? formatClock(s.localTime, false) : s.localTime < 0 ? 'not started' : 'finished');
     }
+}
+
+/** On/off look for toggle buttons: an "off" button is dimmed. */
+function showToggle(button, on) {
+    button?.classList.toggle('opacity-40', !on);
 }

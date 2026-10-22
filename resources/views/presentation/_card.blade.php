@@ -9,14 +9,16 @@
 
     <div class="flex gap-2 p-2">
         <div class="min-w-0 flex-1">
-            @if ($flight['video'])
-                <video data-video src="{{ $flight['video']['url'] }}" muted playsinline preload="metadata"
-                       class="aspect-video w-full rounded bg-black object-cover"></video>
-            @else
-                <div class="grid aspect-video place-items-center rounded bg-neutral-900 text-xs text-neutral-500">No BVR video</div>
-            @endif
+            <div data-card-video class="mb-2">
+                @if ($flight['video'])
+                    <video data-video src="{{ $flight['video']['url'] }}" muted playsinline preload="metadata"
+                           class="aspect-video w-full rounded bg-black object-cover"></video>
+                @else
+                    <div class="grid aspect-video place-items-center rounded bg-neutral-900 text-xs text-neutral-500">No BVR video</div>
+                @endif
+            </div>
 
-            <dl class="mt-2 grid grid-cols-3 gap-x-2 gap-y-1 font-mono text-[11px]">
+            <dl class="grid grid-cols-3 gap-x-2 gap-y-1 font-mono text-[11px]">
                 @foreach (['alt' => 'ALT', 'speed' => 'SPD', 'heading' => 'HDG', 'vs' => 'V/S', 'battery' => 'BAT', 'time' => 'T+'] as $key => $label)
                     <div>
                         <dt class="text-neutral-500">{{ $label }}</dt>
@@ -34,8 +36,14 @@
             <button type="button" data-card-action="model" title="Show / hide 3D model" class="rounded p-1.5 hover:bg-white/10">
                 <x-icon name="box" class="size-4" />
             </button>
+            <button type="button" data-card-action="color" title="Colour the model in this flight's colour" class="rounded p-1.5 hover:bg-white/10">
+                <x-icon name="palette" class="size-4" style="color: {{ $flight['color'] }}" />
+            </button>
             <button type="button" data-card-action="follow" title="Follow this aircraft" class="rounded p-1.5 hover:bg-white/10">
                 <x-icon name="crosshair" class="size-4" />
+            </button>
+            <button type="button" data-card-action="video" title="Show / hide BVR video" class="rounded p-1.5 hover:bg-white/10">
+                <x-icon name="video" class="size-4" />
             </button>
             @if ($flight['video'])
                 <button type="button" data-card-action="mute" title="Mute / unmute video" class="rounded p-1.5 hover:bg-white/10">
