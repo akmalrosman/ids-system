@@ -29,7 +29,6 @@ export class CameraRig {
 
         /** @type {import('./FlightTrack.js').FlightTrack|null} */
         this.following = null;
-        this.home = null;
 
         // Manual panning stops following an aircraft.
         this.controls.addEventListener('start', () => {
@@ -49,29 +48,25 @@ export class CameraRig {
         this.camera.updateProjectionMatrix();
     }
 
-    /** Frames a box from the south-east, looking down at ~50°. */
-    fitBox(box, { remember = false } = {}) {
+    /** Frames a whole box (e.g. every flight path). */
+    fitBox(box) {
         const centre = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
         const radius = Math.max(size.x, size.z, size.y * 2, 400) / 2;
         // Use the narrower of the vertical and horizontal field of view so it fits on tall screens too.
         const vFov = THREE.MathUtils.degToRad(this.camera.fov);
         const hFov = 2 * Math.atan(Math.tan(vFov / 2) * this.camera.aspect);
-        const distance = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.1;
+        this.lookAtFrom(centre.setY(0), (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.1);
+    }
 
+    /** Points the camera at `target` from the south-east, looking down at ~50°, `distance` metres away. */
+    lookAtFrom(target, distance) {
         const direction = new THREE.Vector3(0.35, 0.95, 0.85).normalize();
-        this.controls.target.copy(centre).setY(0);
-        this.camera.position.copy(this.controls.target).addScaledVector(direction, distance);
+        this.controls.target.copy(target);
+        this.camera.position.copy(target).addScaledVector(direction, distance);
         this.camera.near = Math.max(0.5, distance / 5000);
         this.camera.updateProjectionMatrix();
         this.controls.update();
-
-        if (remember) this.home = box.clone();
-    }
-
-    reset() {
-        this.follow(null);
-        if (this.home) this.fitBox(this.home);
     }
 
     /** factor < 1 zooms in, > 1 zooms out (used by the +/- buttons). */

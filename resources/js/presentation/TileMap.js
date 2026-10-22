@@ -275,9 +275,12 @@ export class TileMap {
         // Zoom levels finer than the source are up-sampled, so look further for edges there.
         const texelMetres = (tileSizeMercator * this.projection.k) / TILE_PIXELS;
         const step = Math.max(1, this.sourceResolution / texelMetres) / TILE_PIXELS;
+        // Coarse placeholder layers (e.g. the country-wide base) are far blurrier than the
+        // source; sharpening them only creates blotches while the detailed tiles load.
+        const isCoarse = texelMetres > this.sourceResolution * 8;
         const uniforms = {
             uTexelStep: { value: step },
-            uSharpness: { value: SHARPNESS },
+            uSharpness: { value: isCoarse ? 0 : SHARPNESS },
             uContrast: { value: CONTRAST },
         };
 

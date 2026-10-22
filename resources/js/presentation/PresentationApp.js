@@ -9,6 +9,9 @@ import { loadAircraftTemplate } from './AircraftModels.js';
 /** With aircraft scale "Auto", models are drawn at least this many pixels long. */
 const AUTO_SCALE_MIN_PX = 48;
 
+/** Opening camera distance, in (scaled) aircraft lengths: bigger = further away. */
+const FOCUS_DISTANCE_IN_MODEL_LENGTHS = 6;
+
 /** How the presentation looks when it first opens (the UI controls start in the same state). */
 export const INITIAL_VIEW = {
     modelScale: 10,
@@ -82,8 +85,8 @@ export class PresentationApp {
         this.setModelScale(INITIAL_VIEW.modelScale);
         this.setAllPathsVisible(INITIAL_VIEW.pathsVisible);
         this.resize();
-        this.fitAll({ remember: true });
         this.updateTracks();
+        this.focusOnAircraft();
         this.renderer.domElement.addEventListener('dblclick', (e) => this.onDoubleClick(e));
     }
 
@@ -173,7 +176,8 @@ export class PresentationApp {
 
     // ---- actions used by the UI ------------------------------------------------
 
-    fitAll(options) {
+    /** Frames every flight path ("Fit All"). */
+    fitAll() {
         const box = new THREE.Box3();
         this.tracks.forEach((t) => box.union(t.getBounds()));
         if (box.isEmpty()) {
@@ -182,11 +186,33 @@ export class PresentationApp {
             box.setFromCenterAndSize(new THREE.Vector3(p.x, 0, p.z), new THREE.Vector3(20000, 0, 20000));
         }
         this.rig.follow(null);
-        this.rig.fitBox(box, options);
+        this.rig.fitBox(box);
+    }
+
+    /**
+     * Opening view (and "Reset Camera"): centred on where the aircraft are now, close enough
+     * to see the models clearly but with some of the surroundings.
+     */
+    focusOnAircraft() {
+        if (!this.tracks.length) {
+            this.fitAll();
+            return;
+        }
+
+        const box = new THREE.Box3();
+        this.tracks.forEach((t) => box.expandByPoint(t.position));
+        const spread = Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+
+        const scale = typeof this.modelScale === 'number' ? this.modelScale : 1;
+        const modelLength = Math.max(...this.tracks.map((t) => t.config.model.lengthM || 20)) * scale;
+        const distance = Math.max(spread * 1.6, modelLength * FOCUS_DISTANCE_IN_MODEL_LENGTHS, 300);
+
+        this.rig.follow(null);
+        this.rig.lookAtFrom(box.getCenter(new THREE.Vector3()), distance);
     }
 
     resetCamera() {
-        this.rig.reset();
+        this.focusOnAircraft();
     }
 
     /** A number (1 = real size) or 'auto' (see applyAutoScale). */
