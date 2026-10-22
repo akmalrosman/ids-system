@@ -75,6 +75,7 @@ class PresentationController extends Controller
                 'maxZoom' => config('ids.map.max_zoom'),
                 'bounds' => config('ids.map.bounds'),
                 'attribution' => config('ids.map.attribution'),
+                'sourceResolution' => config('ids.map.source_resolution_m'),
                 'fallbackCenter' => config("ids.locations.{$location}") ?? ['lat' => 4.2, 'lng' => 108.0],
             ],
             'flights' => $flights->values()->map(fn (Flight $f, int $i) => [

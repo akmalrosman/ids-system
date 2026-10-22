@@ -6,6 +6,38 @@ const MAX_PARALLEL_LOADS = 8;
 const BASE_LAYER_MAX_TILES = 100;
 const UPDATE_INTERVAL_MS = 150;
 const WATER_COLOR = 0x0b2233;
+const TILE_PIXELS = 256;
+
+/** Unsharp-mask strength (0 = off) and contrast (1 = unchanged) for map tiles. */
+const SHARPNESS = 0.5;
+const CONTRAST = 1.06;
+
+/**
+ * Replaces three.js' <map_fragment>: sample the tile, subtract a blurred copy
+ * (4 neighbours) to sharpen edges, then add a little contrast.
+ *
+ * - The GPU returns linear-light colours; the maths is done in gamma space
+ *   (sqrt ≈ sRGB) so it matches what the eye sees and doesn't darken the image.
+ * - fwidth() tells how many texels one screen pixel covers: < 1 means magnified.
+ */
+const SHARPEN_MAP_FRAGMENT = /* glsl */ `
+#ifdef USE_MAP
+    vec4 texColor = texture2D( map, vMapUv );
+    vec2 uvPerPixel = fwidth( vMapUv ) * ${TILE_PIXELS.toFixed(1)};
+    float texelsPerPixel = max( uvPerPixel.x, uvPerPixel.y );
+    float amount = uSharpness * ( 1.0 - smoothstep( 0.5, 1.0, texelsPerPixel ) );
+
+    vec3 centre = sqrt( texColor.rgb );
+    vec3 neighbours = sqrt( texture2D( map, vMapUv + vec2( uTexelStep, 0.0 ) ).rgb )
+                    + sqrt( texture2D( map, vMapUv - vec2( uTexelStep, 0.0 ) ).rgb )
+                    + sqrt( texture2D( map, vMapUv + vec2( 0.0, uTexelStep ) ).rgb )
+                    + sqrt( texture2D( map, vMapUv - vec2( 0.0, uTexelStep ) ).rgb );
+    vec3 sharpened = centre + amount * ( centre * 4.0 - neighbours );
+    sharpened = clamp( ( sharpened - 0.5 ) * uContrast + 0.5, 0.0, 1.0 );
+
+    diffuseColor *= vec4( sharpened * sharpened, texColor.a );
+#endif
+`;
 
 /**
  * Flat satellite map built from locally hosted XYZ tiles (public/tiles).
@@ -26,9 +58,11 @@ export class TileMap {
      * @param {number} opts.minZoom
      * @param {number} opts.maxZoom
      * @param {number} opts.anisotropy
+     * @param {number} opts.sourceResolution  real ground size of one image pixel (m), e.g. 10 for Sentinel-2
      */
-    constructor({ projection, tileUrl, bounds, minZoom, maxZoom, anisotropy = 1 }) {
+    constructor({ projection, tileUrl, bounds, minZoom, maxZoom, anisotropy = 1, sourceResolution = 10 }) {
         this.projection = projection;
+        this.sourceResolution = sourceResolution;
         this.tileUrl = tileUrl;
         this.bounds = bounds;
         this.minZoom = minZoom;
@@ -86,9 +120,13 @@ export class TileMap {
             }
         }
 
+        // While new tiles are still downloading, keep showing what is already on screen,
+        // so zooming never flashes the blurry country-wide base layer.
+        const stillLoading = this.active > 0 || this.queue.length > 0;
+
         for (const [key, tile] of this.tiles) {
             if (tile.z === this.baseZoom || !tile.mesh) continue;
-            tile.mesh.visible = wanted.has(key);
+            tile.mesh.visible = wanted.has(key) || (stillLoading && tile.mesh.visible);
             if (tile.mesh.visible) tile.usedAt = now;
         }
 
@@ -206,7 +244,7 @@ export class TileMap {
         const geometry = new THREE.PlaneGeometry(p1.x - p0.x, p1.z - p0.z);
         geometry.rotateX(-Math.PI / 2);
 
-        const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture, depthTest: false, depthWrite: false }));
+        const mesh = new THREE.Mesh(geometry, this.createTileMaterial(texture, b.size));
         mesh.position.set((p0.x + p1.x) / 2, 0, (p0.z + p1.z) / 2);
         // Ground is drawn first, sharper zoom levels on top of coarser ones.
         mesh.renderOrder = -500 + z;
@@ -218,6 +256,41 @@ export class TileMap {
         tile.state = 'ready';
         this.group.add(mesh);
         this.lastUpdate = 0; // re-evaluate visibility on next frame
+    }
+
+    /**
+     * Tile material with a light unsharp mask and contrast boost.
+     *
+     * Satellite imagery has a fixed real resolution (Sentinel-2 ≈ 10 m per pixel), so
+     * zooming in past it only magnifies a smooth blur. Sharpening restores some edge
+     * definition (runways, roads, coastline). It is only applied while the tile is
+     * magnified on screen, so zoomed-out views don't shimmer.
+     *
+     * @param {THREE.Texture} texture
+     * @param {number} tileSizeMercator tile width in mercator metres
+     */
+    createTileMaterial(texture, tileSizeMercator) {
+        const material = new THREE.MeshBasicMaterial({ map: texture, depthTest: false, depthWrite: false });
+
+        // Zoom levels finer than the source are up-sampled, so look further for edges there.
+        const texelMetres = (tileSizeMercator * this.projection.k) / TILE_PIXELS;
+        const step = Math.max(1, this.sourceResolution / texelMetres) / TILE_PIXELS;
+        const uniforms = {
+            uTexelStep: { value: step },
+            uSharpness: { value: SHARPNESS },
+            uContrast: { value: CONTRAST },
+        };
+
+        material.onBeforeCompile = (shader) => {
+            Object.assign(shader.uniforms, uniforms);
+            shader.fragmentShader = shader.fragmentShader
+                .replace('void main() {', 'uniform float uTexelStep;\nuniform float uSharpness;\nuniform float uContrast;\nvoid main() {')
+                .replace('#include <map_fragment>', SHARPEN_MAP_FRAGMENT);
+        };
+        // Every tile uses the same shader code, so they share one compiled program.
+        material.customProgramCacheKey = () => 'ids-sharpened-tile';
+
+        return material;
     }
 
     prune() {

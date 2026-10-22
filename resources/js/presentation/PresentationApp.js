@@ -132,6 +132,7 @@ export class PresentationApp {
             minZoom: this.config.map.minZoom,
             maxZoom: this.config.map.maxZoom,
             anisotropy: this.renderer.capabilities.getMaxAnisotropy(),
+            sourceResolution: this.config.map.sourceResolution,
         });
         this.scene.add(this.map.group);
     }

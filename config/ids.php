@@ -99,6 +99,10 @@ return [
         'max_zoom' => (int) env('MAP_MAX_ZOOM', 16),
         'attribution' => env('MAP_ATTRIBUTION', 'Sentinel-2 cloudless by EOX IT Services GmbH (contains modified Copernicus Sentinel data)'),
 
+        // Real ground size of one imagery pixel in metres (Sentinel-2 = 10). Tunes the
+        // sharpening filter; change it if you switch to sharper imagery (e.g. a drone map).
+        'source_resolution_m' => (float) env('MAP_SOURCE_RESOLUTION_M', 10),
+
         // The map only renders and allows the camera inside this box (Malaysia).
         // [west, south, east, north] in degrees.
         'bounds' => [99.5, 0.75, 119.4, 7.6],
