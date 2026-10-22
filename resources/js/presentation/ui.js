@@ -69,7 +69,7 @@ export function bindUi(app, root) {
             fields: Object.fromEntries([...(el?.querySelectorAll('[data-field]') ?? [])].map((f) => [f.dataset.field, f])),
             pathVisible: INITIAL_VIEW.pathsVisible,
             modelVisible: true,
-            videoVisible: true,
+            videoVisible: Boolean(el?.querySelector('video[data-video]')),
             colored: false,
         };
         el?.querySelectorAll('[data-card-action]').forEach((btn) =>
