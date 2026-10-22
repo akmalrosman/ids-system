@@ -1,0 +1,20 @@
+{
+  "name": "ids-fdr-parser",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Converts flight data recorder (FDR) files into the IDS telemetry JSON used by the debrief presentation.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "fdr-parse": "bin/fdr-parse.js",
+    "fdr-server": "bin/fdr-server.js"
+  },
+  "scripts": {
+    "parse": "node bin/fdr-parse.js",
+    "start": "node bin/fdr-server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "generate:dummy": "node tools/generate-dummy-dji.js"
+  }
+}

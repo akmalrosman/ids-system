@@ -1,0 +1,49 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+@source '../js/**/*.js';
+
+@theme {
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+/* The whole app uses the dark theme from the design. */
+:root {
+    color-scheme: dark;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+@layer components {
+    /* Data tables (flights, groups, aircraft, users, roles) */
+    .data-table {
+        @apply w-full text-sm;
+    }
+    .data-table thead th {
+        @apply h-12 px-3 text-left font-medium whitespace-nowrap text-neutral-400;
+    }
+    .data-table tbody td {
+        @apply h-14 border-t border-neutral-800/80 px-3 whitespace-nowrap;
+    }
+    .data-table tbody tr {
+        @apply transition-colors hover:bg-neutral-900/70;
+    }
+    .data-table caption {
+        @apply caption-bottom pt-5 text-sm text-neutral-400;
+    }
+
+    /* Form controls */
+    .form-control {
+        @apply h-9 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-700/50 focus:outline-none disabled:opacity-50;
+    }
+    textarea.form-control {
+        @apply h-auto py-2;
+    }
+    input[type='file'].form-control {
+        @apply h-auto py-1.5 file:mr-3 file:rounded file:border-0 file:bg-neutral-800 file:px-3 file:py-1 file:text-sm file:text-neutral-100;
+    }
+}

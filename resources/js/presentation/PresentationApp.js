@@ -1,0 +1,209 @@
+import * as THREE from 'three';
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { LocalProjection } from './geo.js';
+import { TileMap } from './TileMap.js';
+import { CameraRig } from './CameraRig.js';
+import { FlightTrack } from './FlightTrack.js';
+import { Playback } from './Playback.js';
+import { loadAircraftTemplate } from './AircraftModels.js';
+
+/**
+ * Owns the Three.js scene: renderer, map, aircraft, camera and the clock.
+ * UI wiring lives in ui.js; this class has no knowledge of the DOM controls.
+ */
+export class PresentationApp {
+    /**
+     * @param {HTMLElement} container element the canvas is added to
+     * @param {object} config            JSON built by PresentationController::buildConfig
+     */
+    constructor(container, config) {
+        this.container = container;
+        this.config = config;
+        /** @type {FlightTrack[]} */
+        this.tracks = [];
+        this.failed = [];
+        this.modelScale = 1;
+        this.frameListeners = new Set();
+    }
+
+    /**
+     * Downloads telemetry + models and builds the scene.
+     * @param {(done:number, total:number) => void} onProgress
+     */
+    async load(onProgress = () => {}) {
+        const flights = this.config.flights;
+        let done = 0;
+        const step = () => onProgress(++done, flights.length * 2);
+
+        const results = await Promise.all(
+            flights.map(async (flight) => {
+                try {
+                    const res = await fetch(flight.telemetryUrl, { headers: { Accept: 'application/json' } });
+                    if (!res.ok) throw new Error(`telemetry HTTP ${res.status}`);
+                    const telemetry = await res.json();
+                    step();
+                    const template = await loadAircraftTemplate(flight.model);
+                    step();
+                    return { flight, telemetry, template };
+                } catch (error) {
+                    console.error(`[Presentation] Flight ${flight.id} failed to load`, error);
+                    this.failed.push({ flight, error });
+                    done += 2;
+                    onProgress(done, flights.length * 2);
+                    return null;
+                }
+            }),
+        );
+
+        const loaded = results.filter(Boolean);
+        this.projection = this.createProjection(loaded);
+        this.setupRenderer();
+        this.setupScene();
+
+        for (const { flight, telemetry, template } of loaded) {
+            const track = new FlightTrack(flight, telemetry, this.projection, template);
+            this.tracks.push(track);
+            this.scene.add(track.object);
+        }
+
+        await this.map.init();
+
+        const duration = Math.max(1, ...this.tracks.map((t) => t.endTime));
+        this.playback = new Playback(duration);
+
+        this.setModelScale(this.suggestedScale());
+        this.resize();
+        this.fitAll({ remember: true });
+        this.updateTracks();
+    }
+
+    /** Scene origin = middle of all flights (or the location of the flight / group). */
+    createProjection(loaded) {
+        const points = loaded.flatMap(({ telemetry }) => [
+            [telemetry.stats.bounds.minLat, telemetry.stats.bounds.minLng],
+            [telemetry.stats.bounds.maxLat, telemetry.stats.bounds.maxLng],
+        ]);
+        if (!points.length) {
+            const c = this.config.map.fallbackCenter;
+            return new LocalProjection(c.lat, c.lng);
+        }
+        const lat = (Math.min(...points.map((p) => p[0])) + Math.max(...points.map((p) => p[0]))) / 2;
+        const lng = (Math.min(...points.map((p) => p[1])) + Math.max(...points.map((p) => p[1]))) / 2;
+        return new LocalProjection(lat, lng);
+    }
+
+    setupRenderer() {
+        // Logarithmic depth: aircraft metres away and Malaysia 2000 km wide in one view.
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.domElement.className = 'absolute inset-0 block';
+        this.container.appendChild(this.renderer.domElement);
+
+        this.labelRenderer = new CSS2DRenderer();
+        this.labelRenderer.domElement.className = 'pointer-events-none absolute inset-0';
+        this.container.appendChild(this.labelRenderer.domElement);
+
+        new ResizeObserver(() => this.resize()).observe(this.container);
+    }
+
+    setupScene() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x05080d);
+
+        this.scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x334455, 2.2));
+        const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+        sun.position.set(0.5, 1, 0.3);
+        this.scene.add(sun);
+
+        const [w, s, e, n] = this.config.map.bounds;
+        const nw = this.projection.toScene(n, w);
+        const se = this.projection.toScene(s, e);
+        this.rig = new CameraRig(this.renderer.domElement, { minX: nw.x, maxX: se.x, minZ: nw.z, maxZ: se.z });
+
+        this.map = new TileMap({
+            projection: this.projection,
+            tileUrl: this.config.map.tileUrl,
+            bounds: this.config.map.bounds,
+            minZoom: this.config.map.minZoom,
+            maxZoom: this.config.map.maxZoom,
+            anisotropy: this.renderer.capabilities.getMaxAnisotropy(),
+        });
+        this.scene.add(this.map.group);
+    }
+
+    start() {
+        const clock = new THREE.Clock();
+        this.renderer.setAnimationLoop(() => {
+            const dt = Math.min(clock.getDelta(), 0.1);
+            this.playback.tick(dt);
+            this.updateTracks();
+            this.rig.update();
+            this.map.update(this.rig.camera, this.rig.target);
+            this.renderer.render(this.scene, this.rig.camera);
+            this.labelRenderer.render(this.scene, this.rig.camera);
+            this.frameListeners.forEach((fn) => fn());
+        });
+    }
+
+    updateTracks() {
+        for (const track of this.tracks) track.update(this.playback.time);
+    }
+
+    /** fn() is called after every rendered frame (used by the UI to refresh read-outs). */
+    onFrame(fn) {
+        this.frameListeners.add(fn);
+    }
+
+    resize() {
+        if (!this.renderer) return;
+        const { clientWidth: w, clientHeight: h } = this.container;
+        if (!w || !h) return;
+        this.renderer.setSize(w, h);
+        this.labelRenderer.setSize(w, h);
+        this.rig.setAspect(w / h);
+        this.tracks.forEach((t) => t.setResolution(w, h));
+    }
+
+    // ---- actions used by the UI ------------------------------------------------
+
+    fitAll(options) {
+        const box = new THREE.Box3();
+        this.tracks.forEach((t) => box.union(t.getBounds()));
+        if (box.isEmpty()) {
+            const c = this.config.map.fallbackCenter;
+            const p = this.projection.toScene(c.lat, c.lng);
+            box.setFromCenterAndSize(new THREE.Vector3(p.x, 0, p.z), new THREE.Vector3(20000, 0, 20000));
+        }
+        this.rig.follow(null);
+        this.rig.fitBox(box, options);
+    }
+
+    resetCamera() {
+        this.rig.reset();
+    }
+
+    setModelScale(scale) {
+        this.modelScale = scale;
+        this.tracks.forEach((t) => t.setModelScale(scale));
+    }
+
+    setLineWidth(px) {
+        this.tracks.forEach((t) => t.setLineWidth(px));
+    }
+
+    setAllPathsVisible(visible) {
+        this.tracks.forEach((t) => t.setPathVisible(visible));
+    }
+
+    /** Bigger aircraft for bigger areas so they stay visible when zoomed out. */
+    suggestedScale() {
+        const box = new THREE.Box3();
+        this.tracks.forEach((t) => box.union(t.getBounds()));
+        const extent = box.isEmpty() ? 0 : Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
+        if (extent < 3000) return 1;
+        if (extent < 15000) return 5;
+        if (extent < 60000) return 10;
+        return 50;
+    }
+}

@@ -1,0 +1,59 @@
+# Production stack: web (nginx + php-fpm), queue worker, PostgreSQL.
+#   cp .env.example .env      # then edit it (see docs/DEPLOYMENT.md)
+#   docker compose up -d --build
+#   docker compose exec app php artisan db:seed --force
+services:
+  app:
+    build: .
+    image: ids-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: app
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ids-files:/var/www/html/storage/app   # uploads + telemetry JSON
+      - ids-logs:/var/www/html/storage/logs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Converts uploaded FDR files (runs App\Jobs\ProcessFdrFile).
+  queue:
+    image: ids-app
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--tries=1", "--timeout=900", "--sleep=2"]
+    env_file: .env
+    environment:
+      CONTAINER_ROLE: queue
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+    volumes:
+      - ids-files:/var/www/html/storage/app
+      - ids-logs:/var/www/html/storage/logs
+    depends_on:
+      - app
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-ids}
+      POSTGRES_USER: ${DB_USERNAME:-ids}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - ids-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-ids} -d ${DB_DATABASE:-ids}"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  ids-files:
+  ids-logs:
+  ids-db:
