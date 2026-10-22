@@ -9,9 +9,9 @@
             </span>
 
             @auth
-                <a href="{{ route('dashboard') }}" class="text-sm text-neutral-400 hover:text-neutral-100">Dashboard</a>
+                <x-ui.button variant="outline" size="sm" :href="route('dashboard')">Dashboard</x-ui.button>
             @else
-                <a href="{{ route('login') }}" class="text-sm text-neutral-400 hover:text-neutral-100">Log in</a>
+                <x-ui.button variant="outline" size="sm" :href="route('login')">Log in</x-ui.button>
             @endauth
         </header>
 
@@ -23,17 +23,17 @@
             <h1 class="text-4xl font-semibold tracking-tight md:text-6xl">Integrated Debrief System</h1>
             <p class="mt-4 max-w-md text-neutral-400">Flight data analysis and 3D flight debrief.</p>
 
-            <div class="mt-10">
-                @auth
-                    <x-ui.button :href="route('dashboard')" class="h-10 px-5">
-                        Go to dashboard <x-icon name="arrow-right" class="size-4" />
-                    </x-ui.button>
-                @else
-                    <x-ui.button :href="route('login')" class="h-10 px-5">
-                        Log in <x-icon name="arrow-right" class="size-4" />
-                    </x-ui.button>
-                @endauth
-            </div>
+            <ul class="mt-10 flex flex-col items-center gap-3 text-sm text-neutral-500 sm:flex-row sm:gap-0">
+                @foreach (['file-text' => 'Flight data processing', 'plane' => '3D flight replay', 'radar' => 'Formation debrief'] as $icon => $label)
+                    <li class="flex items-center gap-2">
+                        @unless ($loop->first)
+                            <span aria-hidden="true" class="mx-5 hidden size-1 rounded-full bg-neutral-700 sm:block"></span>
+                        @endunless
+                        <x-icon :name="$icon" class="size-4 text-neutral-400" />
+                        {{ $label }}
+                    </li>
+                @endforeach
+            </ul>
         </main>
 
         <footer class="relative py-8 text-center text-xs text-neutral-600">
