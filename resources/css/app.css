@@ -18,6 +18,15 @@
     display: none !important;
 }
 
+/* Faint 48px grid that fades out from the centre (landing / login backgrounds). */
+@utility bg-grid {
+    background-image:
+        linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 70%);
+}
+
 @layer components {
     /* Data tables (flights, groups, aircraft, users, roles) */
     .data-table {

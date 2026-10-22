@@ -1,10 +1,10 @@
 <x-layouts.auth title="Log in">
-    <div class="mb-8">
-        <h1 class="text-2xl font-semibold tracking-tight">Log in to your account</h1>
+    <div class="mb-8 text-center">
+        <h1 class="text-xl font-semibold tracking-tight">Log in to your account</h1>
         <p class="mt-2 text-sm text-neutral-400">Enter your email and password below to log in</p>
     </div>
 
-    <form method="POST" action="{{ route('login') }}" class="space-y-6">
+    <form method="POST" action="{{ route('login') }}" class="space-y-5">
         @csrf
 
         <x-ui.field label="Email address" name="email">
@@ -15,7 +15,7 @@
         <div class="space-y-2">
             <div class="flex items-center justify-between">
                 <label for="password" class="text-sm font-medium text-neutral-200">Password</label>
-                <a href="{{ route('password.request') }}" class="text-sm text-neutral-400 underline-offset-4 hover:text-neutral-100 hover:underline">Forgot password?</a>
+                <a href="{{ route('password.request') }}" class="text-xs text-neutral-400 hover:text-neutral-100">Forgot password?</a>
             </div>
             <input id="password" name="password" type="password" required autocomplete="current-password"
                    placeholder="Password" class="form-control h-10">
@@ -28,8 +28,6 @@
             Remember me
         </label>
 
-        <x-ui.button type="submit" icon="log-in" class="h-10 w-full">Log in</x-ui.button>
+        <x-ui.button type="submit" class="h-10 w-full">Log in</x-ui.button>
     </form>
-
-    <p class="mt-8 text-center text-xs text-neutral-500">No account? Ask your system administrator to create one.</p>
 </x-layouts.auth>
