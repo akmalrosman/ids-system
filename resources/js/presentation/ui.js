@@ -102,6 +102,7 @@ export function bindUi(app, root) {
         } else if (action === 'video') {
             card.videoVisible = !card.videoVisible;
             card.el.querySelector('[data-card-video]')?.classList.toggle('hidden', !card.videoVisible);
+            card.el.dataset.video = card.videoVisible ? 'on' : 'off'; // switches the flight-data layout (_card.blade.php)
             if (!card.videoVisible) card.video?.pause();
             else syncVideos(true);
             showToggle(btn, card.videoVisible);

@@ -1,6 +1,9 @@
-{{-- One aircraft card beside the 3D view. Wired up by resources/js/presentation/ui.js via data-* attributes. --}}
-<div data-card data-flight-id="{{ $flight['id'] }}"
-     class="overflow-hidden rounded-md border-2 bg-neutral-950 ring-white transition"
+{{--
+    One aircraft card beside the 3D view. Wired up by resources/js/presentation/ui.js via data-* attributes.
+    data-video="off" (set when the BVR video is hidden) switches the flight data to a larger layout.
+--}}
+<div data-card data-flight-id="{{ $flight['id'] }}" data-video="on"
+     class="group overflow-hidden rounded-md border-2 bg-neutral-950 ring-white transition"
      style="border-color: {{ $flight['color'] }}">
     <div class="flex items-center justify-between px-2 py-1 text-sm font-medium text-white" style="background: {{ $flight['color'] }}">
         <span class="truncate">{{ $flight['label'] }}</span>
@@ -8,7 +11,7 @@
     </div>
 
     <div class="flex gap-2 p-2">
-        <div class="min-w-0 flex-1">
+        <div class="flex min-w-0 flex-1 flex-col">
             <div data-card-video class="mb-2">
                 @if ($flight['video'])
                     <video data-video src="{{ $flight['video']['url'] }}" muted playsinline preload="metadata"
@@ -18,11 +21,12 @@
                 @endif
             </div>
 
-            <dl class="grid grid-cols-3 gap-x-2 gap-y-1 font-mono text-[11px]">
+            <dl class="grid grid-cols-3 gap-x-2 gap-y-1 font-mono text-[11px]
+                       group-data-[video=off]:flex-1 group-data-[video=off]:grid-cols-2 group-data-[video=off]:content-evenly group-data-[video=off]:gap-x-3">
                 @foreach (['alt' => 'ALT', 'speed' => 'SPD', 'heading' => 'HDG', 'vs' => 'V/S', 'battery' => 'BAT', 'time' => 'T+'] as $key => $label)
-                    <div>
-                        <dt class="text-neutral-500">{{ $label }}</dt>
-                        <dd data-field="{{ $key }}" class="truncate text-neutral-100">—</dd>
+                    <div class="group-data-[video=off]:rounded group-data-[video=off]:bg-neutral-900 group-data-[video=off]:px-2 group-data-[video=off]:py-1.5">
+                        <dt class="text-neutral-500 group-data-[video=off]:text-[10px] group-data-[video=off]:tracking-wider">{{ $label }}</dt>
+                        <dd data-field="{{ $key }}" class="truncate text-neutral-100 group-data-[video=off]:text-sm group-data-[video=off]:font-semibold">—</dd>
                     </div>
                 @endforeach
             </dl>
