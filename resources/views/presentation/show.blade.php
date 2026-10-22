@@ -31,7 +31,8 @@
         </button>
 
         <label class="flex items-center gap-2 text-neutral-300">Aircraft Scale:
-            <select data-control="scale" class="form-control h-8 w-20 py-0">
+            <select data-control="scale" class="form-control h-8 w-24 py-0" title="Auto keeps aircraft visible when zoomed out and real-size up close">
+                <option value="auto">Auto</option>
                 @foreach ([1, 2, 5, 10, 25, 50, 100] as $s)<option value="{{ $s }}">{{ $s }}x</option>@endforeach
             </select>
         </label>
@@ -71,6 +72,11 @@
                 </div>
             @endif
 
+            <div class="absolute right-3 top-3 z-10 flex flex-col overflow-hidden rounded-md bg-neutral-900/90 text-lg leading-none">
+                <button type="button" data-action="zoom-in" title="Zoom in (+)" aria-label="Zoom in" class="size-9 hover:bg-neutral-800">+</button>
+                <button type="button" data-action="zoom-out" title="Zoom out (-)" aria-label="Zoom out" class="size-9 border-t border-neutral-700 hover:bg-neutral-800">−</button>
+            </div>
+
             <div class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 text-sm">
                 <button type="button" data-action="reset" class="h-9 rounded-md bg-neutral-900/90 px-4 whitespace-nowrap hover:bg-neutral-800">Reset Camera</button>
                 <button type="button" data-action="fit" class="h-9 rounded-md bg-neutral-900/90 px-4 whitespace-nowrap hover:bg-neutral-800">Fit All</button>
@@ -84,7 +90,7 @@
 
             <p class="pointer-events-none absolute bottom-1 left-2 z-10 text-[10px] text-white/50">{{ $config['map']['attribution'] }}</p>
             <p class="pointer-events-none absolute right-2 bottom-1 z-10 text-[10px] text-white/40">
-                Drag: pan · Right-drag: rotate · Wheel: zoom · Space: play/pause · ←/→: ±10 s
+                Drag: pan · Right-drag: rotate · Wheel / +/−: zoom · Double-click aircraft: zoom &amp; follow · Space: play/pause · ←/→: ±10 s
             </p>
 
             <div data-loading class="absolute inset-0 z-20 grid place-items-center bg-black">

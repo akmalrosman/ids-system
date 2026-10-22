@@ -7,6 +7,9 @@ import { FlightTrack } from './FlightTrack.js';
 import { Playback } from './Playback.js';
 import { loadAircraftTemplate } from './AircraftModels.js';
 
+/** With aircraft scale "Auto", models are drawn at least this many pixels long. */
+const AUTO_SCALE_MIN_PX = 48;
+
 /**
  * Owns the Three.js scene: renderer, map, aircraft, camera and the clock.
  * UI wiring lives in ui.js; this class has no knowledge of the DOM controls.
@@ -71,10 +74,11 @@ export class PresentationApp {
         const duration = Math.max(1, ...this.tracks.map((t) => t.endTime));
         this.playback = new Playback(duration);
 
-        this.setModelScale(this.suggestedScale());
+        this.setModelScale('auto');
         this.resize();
         this.fitAll({ remember: true });
         this.updateTracks();
+        this.renderer.domElement.addEventListener('dblclick', (e) => this.onDoubleClick(e));
     }
 
     /** Scene origin = middle of all flights (or the location of the flight / group). */
@@ -139,6 +143,7 @@ export class PresentationApp {
             this.playback.tick(dt);
             this.updateTracks();
             this.rig.update();
+            this.applyAutoScale();
             this.map.update(this.rig.camera, this.rig.target);
             this.renderer.render(this.scene, this.rig.camera);
             this.labelRenderer.render(this.scene, this.rig.camera);
@@ -183,9 +188,69 @@ export class PresentationApp {
         this.rig.reset();
     }
 
+    /** A number (1 = real size) or 'auto' (see applyAutoScale). */
     setModelScale(scale) {
         this.modelScale = scale;
-        this.tracks.forEach((t) => t.setModelScale(scale));
+        if (scale !== 'auto') this.tracks.forEach((t) => t.setModelScale(scale));
+    }
+
+    /**
+     * 'auto' scale: each aircraft is drawn at least AUTO_SCALE_MIN_PX long on screen,
+     * so it is visible when zoomed out and shrinks to its real size when you get close.
+     */
+    applyAutoScale() {
+        if (this.modelScale !== 'auto') return;
+
+        const camera = this.rig.camera;
+        const viewHeight = this.container.clientHeight || 1;
+        const pxToMetres = (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / viewHeight;
+
+        for (const track of this.tracks) {
+            const distance = camera.position.distanceTo(track.position);
+            const length = track.config.model.lengthM || 20;
+            track.setModelScale(Math.max(1, (AUTO_SCALE_MIN_PX * distance * pxToMetres) / length));
+        }
+    }
+
+    /** factor < 1 zooms in, > 1 zooms out. */
+    zoomBy(factor) {
+        this.rig.zoomBy(factor);
+    }
+
+    /**
+     * Double-click an aircraft: zoom in on it and follow it.
+     * Double-click anywhere else: centre the view there and zoom in.
+     */
+    onDoubleClick(event) {
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const camera = this.rig.camera;
+
+        const hit = this.tracks
+            .map((track) => {
+                const p = track.position.clone().project(camera);
+                const sx = ((p.x + 1) / 2) * rect.width;
+                const sy = ((1 - p.y) / 2) * rect.height;
+                return { track, pixels: Math.hypot(sx - x, sy - y), inFront: p.z < 1 };
+            })
+            .filter((h) => h.inFront && h.pixels < 40)
+            .sort((a, b) => a.pixels - b.pixels)[0];
+
+        if (hit) {
+            this.rig.follow(hit.track);
+            this.rig.focusOn(hit.track.position, Math.max(80, (hit.track.config.model.lengthM || 20) * 8));
+            return;
+        }
+
+        const ndc = new THREE.Vector2((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1);
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(ndc, camera);
+        const ground = raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+        if (ground) {
+            this.rig.follow(null);
+            this.rig.focusOn(ground, camera.position.distanceTo(this.rig.target) * 0.4);
+        }
     }
 
     setLineWidth(px) {
@@ -194,16 +259,5 @@ export class PresentationApp {
 
     setAllPathsVisible(visible) {
         this.tracks.forEach((t) => t.setPathVisible(visible));
-    }
-
-    /** Bigger aircraft for bigger areas so they stay visible when zoomed out. */
-    suggestedScale() {
-        const box = new THREE.Box3();
-        this.tracks.forEach((t) => box.union(t.getBounds()));
-        const extent = box.isEmpty() ? 0 : Math.max(box.max.x - box.min.x, box.max.z - box.min.z);
-        if (extent < 3000) return 1;
-        if (extent < 15000) return 5;
-        if (extent < 60000) return 10;
-        return 50;
     }
 }

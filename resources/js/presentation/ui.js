@@ -28,8 +28,9 @@ export function bindUi(app, root) {
 
     const scaleSelect = $('[data-control="scale"]');
     scaleSelect.value = String(app.modelScale);
-    if (scaleSelect.value !== String(app.modelScale)) scaleSelect.value = '1';
-    scaleSelect.addEventListener('change', () => app.setModelScale(Number(scaleSelect.value)));
+    scaleSelect.addEventListener('change', () =>
+        app.setModelScale(scaleSelect.value === 'auto' ? 'auto' : Number(scaleSelect.value)),
+    );
 
     const speedSelect = $('[data-control="speed"]');
     speedSelect.addEventListener('change', () => playback.setSpeed(Number(speedSelect.value)));
@@ -37,6 +38,8 @@ export function bindUi(app, root) {
     // ---- bottom bar -------------------------------------------------------------
     $('[data-action="reset"]').addEventListener('click', () => app.resetCamera());
     $('[data-action="fit"]').addEventListener('click', () => app.fitAll());
+    $('[data-action="zoom-in"]').addEventListener('click', () => app.zoomBy(0.5));
+    $('[data-action="zoom-out"]').addEventListener('click', () => app.zoomBy(2));
 
     let allPaths = true;
     const pathsBtn = $('[data-action="paths"]');
@@ -108,6 +111,8 @@ export function bindUi(app, root) {
             playback.toggle();
         } else if (e.key === 'ArrowRight') playback.seek(playback.time + 10);
         else if (e.key === 'ArrowLeft') playback.seek(playback.time - 10);
+        else if (e.key === '+' || e.key === '=') app.zoomBy(0.5);
+        else if (e.key === '-') app.zoomBy(2);
         else if (e.key === 'f') app.fitAll();
         else if (e.key === 'r') app.resetCamera();
     });

@@ -22,6 +22,7 @@ export class CameraRig {
         this.controls.dampingFactor = 0.12;
         this.controls.screenSpacePanning = false;
         this.controls.zoomToCursor = true;
+        this.controls.zoomSpeed = 2.5; // default 1 feels stuck on a map this big
         this.controls.minDistance = 20;
         this.controls.maxDistance = 2_500_000;
         this.controls.maxPolarAngle = THREE.MathUtils.degToRad(85);
@@ -71,6 +72,21 @@ export class CameraRig {
     reset() {
         this.follow(null);
         if (this.home) this.fitBox(this.home);
+    }
+
+    /** factor < 1 zooms in, > 1 zooms out (used by the +/- buttons). */
+    zoomBy(factor) {
+        const offset = this.camera.position.clone().sub(this.controls.target);
+        const distance = THREE.MathUtils.clamp(offset.length() * factor, this.controls.minDistance, this.controls.maxDistance);
+        this.camera.position.copy(this.controls.target).add(offset.setLength(distance));
+    }
+
+    /** Moves the view centre to `point` (keeping the viewing angle) and sets the distance. */
+    focusOn(point, distance) {
+        const offset = this.camera.position.clone().sub(this.controls.target);
+        this.controls.target.copy(point);
+        offset.setLength(THREE.MathUtils.clamp(distance, this.controls.minDistance, this.controls.maxDistance));
+        this.camera.position.copy(point).add(offset);
     }
 
     /** Keep `track` in the centre of the view (null = stop). */

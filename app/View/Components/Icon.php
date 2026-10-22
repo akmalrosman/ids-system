@@ -42,7 +42,13 @@ class Icon extends Component
         $svg = file_get_contents($path);
         $svg = preg_replace('/<!--.*?-->/s', '', $svg);
         // Size comes from the class (e.g. size-4); drop the fixed size and Lucide's own class.
-        $svg = preg_replace('/\s(width|height|class)="[^"]*"/', '', $svg);
+        // Only on the outer <svg> tag: inner shapes like <rect> need their own width/height.
+        $svg = preg_replace_callback(
+            '/<svg\b[^>]*>/',
+            fn (array $tag) => preg_replace('/\s(width|height|class)="[^"]*"/', '', $tag[0]),
+            $svg,
+            1,
+        );
 
         return trim(preg_replace('/\s+/', ' ', $svg));
     }
