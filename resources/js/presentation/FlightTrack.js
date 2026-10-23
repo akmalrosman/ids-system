@@ -85,6 +85,10 @@ export class FlightTrack {
         this.pivot.add(this.model);
         this.object.add(this.pivot);
 
+        // The model is centred on its position, so on the ground half of it would sit below
+        // the map. Keep at least this (unscaled) height under the centre; see update().
+        this.modelHalfHeight = new THREE.Box3().setFromObject(template).getSize(new THREE.Vector3()).y / 2;
+
         // Clones share the template's materials; remember them so colouring can be undone.
         this.meshes = [];
         this.model.traverse((child) => {
@@ -158,7 +162,10 @@ export class FlightTrack {
         const f = span > 0 ? (t - this.t[i]) / span : 0;
 
         const x = lerp(this.positions[i * 3], this.positions[j * 3], f);
-        const y = lerp(this.positions[i * 3 + 1], this.positions[j * 3 + 1], f);
+        // Never draw the model lower than half its (scaled) height, so it rests on top of the
+        // map instead of sinking into it while taxiing. In the air the real altitude is higher anyway.
+        const groundClearance = this.modelHalfHeight * this.model.scale.y;
+        const y = Math.max(lerp(this.positions[i * 3 + 1], this.positions[j * 3 + 1], f), groundClearance);
         const z = lerp(this.positions[i * 3 + 2], this.positions[j * 3 + 2], f);
         const heading = lerpAngle(this.heading[i], this.heading[j], f);
         const pitch = lerp(this.pitch[i], this.pitch[j], f);
