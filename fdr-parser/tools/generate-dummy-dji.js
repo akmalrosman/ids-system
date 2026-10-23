@@ -3,7 +3,7 @@
  * Generates realistic *dummy* DJI flight records so the system can be built
  * and demonstrated before a real drone is available.
  *
- *   node fdr-parser/tools/generate-dummy-dji.js [--out sample-data/dji] [--rate 5]
+ *   node fdr-parser/tools/generate-dummy-dji.js [--out database/sample-data/dji] [--rate 5]
  *
  * Output layout = a decoded DJI flight record in CSV form (same column names as
  * the DJI FlightRecord / PhantomHelp CSV export: "OSD.latitude", "OSD.height [ft]", ...).
@@ -21,7 +21,7 @@ import { parseArgs } from 'node:util';
 const here = dirname(fileURLToPath(import.meta.url));
 const { values } = parseArgs({
     options: {
-        out: { type: 'string', default: resolve(here, '../../sample-data/dji') },
+        out: { type: 'string', default: resolve(here, '../../database/sample-data/dji') },
         rate: { type: 'string', default: '5' },
     },
 });

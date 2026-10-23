@@ -19,7 +19,7 @@ WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --ignore-platform-reqs
 COPY . .
-RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
+RUN composer dump-autoload --optimize --classmap-authoritative --no-dev --no-scripts
 
 # ---- 3. Runtime --------------------------------------------------------------------
 FROM php:8.4-fpm-bookworm
@@ -42,8 +42,10 @@ COPY --chown=www-data:www-data . .
 COPY --from=vendor --chown=www-data:www-data /app/vendor ./vendor
 COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
 
+# package:discover lists only the production packages installed above (no dev tools).
 RUN chmod +x /usr/local/bin/ids-entrypoint \
     && rm -f public/hot \
+    && php artisan package:discover --ansi \
     && chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 80

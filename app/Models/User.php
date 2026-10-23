@@ -43,11 +43,6 @@ class User extends Authenticatable
         return $this->hasMany(Flight::class, 'pilot_id');
     }
 
-    public function flightsAsWso(): HasMany
-    {
-        return $this->hasMany(Flight::class, 'wso_id');
-    }
-
     public function isSuperAdmin(): bool
     {
         return (bool) $this->role?->isSuperAdmin();

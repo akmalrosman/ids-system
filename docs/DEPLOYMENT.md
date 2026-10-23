@@ -14,17 +14,16 @@ Needs: Docker Engine + Compose plugin on the server.
 
 ```bash
 git clone <your-repo-url> ids-system && cd ids-system
-cp .env.example .env
+cp .env.production.example .env
 ```
 
-Edit `.env`:
+`.env.production.example` already has the production values (`APP_ENV=production`, `APP_DEBUG=false`, …).
+Fill in the lines marked **CHANGE ME**:
 
 ```dotenv
-APP_ENV=production
-APP_DEBUG=false
 APP_URL=http://your-server-ip:8080
 DB_PASSWORD=choose-a-strong-password
-ADMIN_EMAIL=admin@yourunit.mil.my
+ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=choose-another-strong-password
 ```
 
@@ -80,7 +79,7 @@ App:
 ```bash
 sudo mkdir -p /var/www && cd /var/www
 sudo git clone <your-repo-url> ids-system && sudo chown -R $USER:www-data ids-system && cd ids-system
-cp .env.example .env            # set APP_ENV=production, APP_DEBUG=false, APP_URL, DB_*, ADMIN_*
+cp .env.production.example .env # fill in the CHANGE ME lines (APP_URL, DB_PASSWORD, ADMIN_*)
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan key:generate
@@ -129,3 +128,5 @@ Updating later: `bash scripts/deploy.sh`.
 | Map is plain dark blue | `public/tiles/manifest.json` missing: run the tile download |
 | Aircraft flies sideways | Settings → Aircraft Types → *Heading offset* (try 90 / -90 / 180) |
 | 500 error | `storage/logs/laravel.log` |
+| `.env` change has no effect | Settings are cached: `php artisan optimize` (Docker: `docker compose restart app queue`) |
+| "Class ... ServiceProvider not found" | A dev-only package was cached; run `php artisan package:discover` (the Docker image does this itself) |

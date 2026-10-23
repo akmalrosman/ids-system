@@ -5,7 +5,7 @@ import { rowsToSamples } from './tabular.js';
  *
  * This is what you get when a DJI .txt flight record is decoded by the
  * official DJI FlightRecord tool / PhantomHelp log viewer, and it is the
- * layout of the dummy logs in /sample-data/dji.
+ * layout of the dummy logs in /database/sample-data/dji.
  */
 export default {
     id: 'dji-csv',

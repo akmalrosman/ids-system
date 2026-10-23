@@ -4,11 +4,11 @@ Node.js (≥ 20) package that converts Flight Data Recorder files into the **ids
 the debrief charts and 3D presentation. It has no npm dependencies.
 
 ```bash
-node bin/fdr-parse.js ../sample-data/dji/<file>.txt --pretty         # print JSON
+node bin/fdr-parse.js ../database/sample-data/dji/<file>.txt --pretty         # print JSON
 node bin/fdr-parse.js <file> --output out.json --tz +08:00 --max-rate 10
 node bin/fdr-server.js                                                # optional HTTP service on :3100
 npm test                                                              # unit tests
-node tools/generate-dummy-dji.js                                      # rebuild sample-data/dji
+node tools/generate-dummy-dji.js                                      # rebuild database/sample-data/dji
 ```
 
 Laravel calls it from `App\Services\Fdr\NodeCliFdrParser` (or `NodeHttpFdrParser` when

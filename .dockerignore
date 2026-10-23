@@ -13,7 +13,10 @@ storage/framework/cache/data/*
 storage/framework/sessions/*
 storage/framework/views/*
 database/database.sqlite
+# Cached package/service lists from the dev machine include dev-only packages; the image builds its own.
+bootstrap/cache/*.php
 tests
 .claude
+.cursor
 .idea
 .vscode

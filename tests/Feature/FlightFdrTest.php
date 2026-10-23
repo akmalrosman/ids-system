@@ -19,7 +19,7 @@ class FlightFdrTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SAMPLE = 'sample-data/dji/DJIFlightRecord_2025-05-18_[16-00-00]_5201.txt';
+    private const SAMPLE = 'database/sample-data/dji/DJIFlightRecord_2025-05-18_[16-00-00]_5201.txt';
 
     protected function setUp(): void
     {

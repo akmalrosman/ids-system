@@ -46,11 +46,6 @@ class Flight extends Model
         return $this->belongsTo(User::class, 'wso_id');
     }
 
-    public function creator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
     public function groups(): BelongsToMany
     {
         return $this->belongsToMany(FlightGroup::class);

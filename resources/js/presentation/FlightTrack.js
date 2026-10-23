@@ -247,16 +247,6 @@ export class FlightTrack {
     get position() {
         return this.pivot.position;
     }
-
-    dispose() {
-        this.fullPath.geometry.dispose();
-        this.trail.geometry.dispose();
-        this.pathMaterial.dispose();
-        this.trailMaterial.dispose();
-        this.dropLine.geometry.dispose();
-        this.dropLine.material.dispose();
-        this.meshes.forEach((part) => part.colored?.dispose());
-    }
 }
 
 function lerp(a, b, f) {

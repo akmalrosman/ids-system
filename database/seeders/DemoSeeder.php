@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Demo data for development: pilots, aircraft, and flights that use the
- * dummy DJI logs in /sample-data/dji (regenerate them with
+ * dummy DJI logs in /database/sample-data/dji (regenerate them with
  * `npm run fdr:dummy`). The FDR files are converted right away, so the
  * presentation works straight after seeding.
  */
 class DemoSeeder extends Seeder
 {
-    private const SAMPLE_DIR = 'sample-data/dji';
+    private const SAMPLE_DIR = 'database/sample-data/dji';
 
     public function run(): void
     {

@@ -43,7 +43,7 @@ Useful commands:
 | --- | --- |
 | `php artisan test` | PHP tests (includes a real FDR upload → Node parser → telemetry run) |
 | `npm run fdr:test` | Parser unit tests |
-| `npm run fdr:dummy` | Regenerate the dummy DJI logs in `sample-data/dji` |
+| `npm run fdr:dummy` | Regenerate the dummy DJI logs in `database/sample-data/dji` |
 | `php artisan fdr:process 3` / `--all` | Re-convert one / all FDR files and print the result |
 | `node fdr-parser/bin/fdr-parse.js file.txt --pretty` | Run the parser by hand on any file |
 | `npm run tiles:download -- --preset malaysia` | Download offline map tiles (see §4) |
@@ -76,7 +76,7 @@ a failed conversion shows the parser's reason (e.g. `[UNKNOWN_FORMAT] …`).
 
 Real DJI `DJIFlightRecord_*.txt` files are **binary and encrypted**. The parser accepts:
 
-1. **Decoded DJI CSV** (`OSD.latitude`, `OSD.height [ft]`, …): the dummy files in `sample-data/dji` use this layout.
+1. **Decoded DJI CSV** (`OSD.latitude`, `OSD.height [ft]`, …): the dummy files in `database/sample-data/dji` use this layout.
 2. **Real binary `.txt`**: decoded through the open-source `dji-log` CLI with a DJI App Key (set `DJI_LOG_PARSER_CMD` + `DJI_API_KEY`).
 3. dji-log JSON, AirData CSV, or any CSV with `lat`/`lon` columns.
 
@@ -84,31 +84,48 @@ Adding `.tkd` later means one new adapter file. See [fdr-parser/README.md](fdr-p
 
 ---
 
-## 3. Where things are (to find bugs quickly)
+## 3. Project structure (where to look when something breaks)
 
 ```
 app/
-  Enums/FdrStatus.php              FDR processing states
-  Http/Controllers/                one controller per page group (Flight, FlightGroup, Aircraft, …)
-    FlightFileController.php       FDR download, video stream, telemetry JSON, re-process
-    PresentationController.php     builds the JSON config for the 3D page
-  Http/Requests/                   validation rules for every form
-  Jobs/ProcessFdrFile.php          the queued FDR conversion
-  Models/                          Flight, FlightGroup, Aircraft, AircraftType, User, Role
-  Services/FlightFileService.php   all file storage for a flight
-  Services/Fdr/                    Laravel ↔ Node.js parser (cli / http drivers)
-  Support/Permission.php           every permission key (used as Gates)
-config/ids.php                     ALL app settings (parser, map, model, locations)
-database/seeders/                  roles, admin, demo data (DemoSeeder uses sample-data/dji)
-fdr-parser/                        Node.js FDR → telemetry converter (+ tests, dummy generator)
-resources/views/                   Blade pages; components/ui/* are the shared UI pieces
-resources/js/presentation/         Three.js presentation (see main.js for a file map)
-resources/js/pages/flight-charts.js
-routes/web.php                     all URLs + permission middleware
-routes/console.php                 `php artisan fdr:process`
-scripts/map-tiles/                 offline map tile downloader
-sample-data/dji/                   dummy DJI flight logs
-docs/DEPLOYMENT.md                 putting it on a server
+  Enums/FdrStatus.php                FDR processing states
+  Http/Controllers/                  one controller per area (Flight, FlightGroup, Aircraft, User, Role, …)
+    FlightFileController.php         FDR download, video stream, telemetry JSON, re-process
+    PresentationController.php       builds the JSON config for the 3D page
+  Http/Requests/                     validation rules for every form
+  Jobs/ProcessFdrFile.php            the queued FDR conversion
+  Models/                            Flight, FlightGroup, Aircraft, AircraftType, User, Role
+  Services/FlightFileService.php     all file storage for a flight
+  Services/Fdr/                      Laravel ↔ Node.js parser (cli / http drivers)
+  Support/                           Permission keys (Gates), Duration formatting
+  View/Components/Icon.php           <x-icon name="…"> (SVGs in resources/icons)
+config/ids.php                       ALL app settings (parser, map, model, locations)
+database/
+  migrations/  seeders/              schema; roles, admin account, demo data
+  sample-data/dji/                   dummy DJI flight logs (used by DemoSeeder and for test uploads)
+docker/                              nginx, php.ini, supervisor and entrypoint for the Docker image
+docs/DEPLOYMENT.md                   putting it on a server
+fdr-parser/                          Node.js FDR → telemetry converter (+ tests, dummy log generator)
+public/
+  models/su30.glb                    default 3D aircraft model
+  tiles/                             offline satellite map tiles + manifest.json
+resources/
+  css/app.css                        Tailwind entry + shared classes (.data-table, .form-control, bg-grid)
+  icons/                             Lucide SVG icons (ISC licence)
+  js/app.js                          Alpine.js + loads page scripts
+  js/pages/flight-charts.js          charts on the flight page
+  js/presentation/                   Three.js presentation (see main.js for a file map)
+  views/components/layouts/          app (sidebar), guest and auth layouts
+  views/components/ui/               shared UI pieces: button, card, badge, field, stat, table-card, …
+  views/partials/                    sidebar, flights / groups tables, pagination
+routes/web.php                       all URLs + permission middleware
+routes/console.php                   `php artisan fdr:process`
+scripts/deploy.sh                    update a non-Docker server to the latest code
+scripts/map-tiles/                   offline map tile downloader
+tests/                               PHPUnit feature and unit tests
+Dockerfile, docker-compose.yml       production image and stack
+.env.example                         settings template for your computer
+.env.production.example              settings template for the server
 ```
 
 Debugging tips:
@@ -119,6 +136,8 @@ Debugging tips:
 - **3D page:** open the browser console; `window.idsPresentation` is the running app
   (e.g. `idsPresentation.tracks[0].state`, `idsPresentation.playback.seek(300)`).
 - **Parser:** run `node fdr-parser/bin/fdr-parse.js <file> --pretty` to see exactly what Laravel receives.
+- **Page stuck on "Loading…" after stopping `composer run dev`:** delete `public/hot` (or run `npm run build`).
+- **`.env` changes ignored:** settings are cached; run `php artisan optimize:clear`.
 
 ---
 
@@ -150,3 +169,4 @@ Permissions are editable per role in **Settings → Roles**.
 ## 6. Deploying
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Docker Compose (recommended) or a plain Ubuntu server.
+Start from `.env.production.example`; it already has the production values and marks what to change.
