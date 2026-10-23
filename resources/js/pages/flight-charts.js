@@ -35,6 +35,29 @@ const SERIES = [
     { key: 'battery', title: 'Battery (%)', unit: '%', color: '#ca8a04' },
 ];
 
+/**
+ * Charts in the "Combined" view. Each group is one chart; each axis gets its own
+ * y scale, and series listed on the same axis share it (e.g. pitch and roll).
+ */
+const COMBINED_GROUPS = [
+    {
+        title: 'Altitude & speed',
+        axes: [
+            { title: 'Height (ft)', keys: ['alt'] },
+            { title: 'Ground speed (kt)', keys: ['speed'] },
+            { title: 'Vertical speed (ft/min)', keys: ['vs'] },
+        ],
+    },
+    {
+        title: 'Attitude & battery',
+        axes: [
+            { title: 'Pitch / Roll (°)', keys: ['pitch', 'roll'] },
+            { title: 'Heading (°)', keys: ['yaw'], min: 0, max: 360 },
+            { title: 'Battery (%)', keys: ['battery'], min: 0, max: 100 },
+        ],
+    },
+];
+
 export async function mountFlightCharts(root) {
     const container = root.querySelector('[data-charts-container]');
 
@@ -57,7 +80,7 @@ export async function mountFlightCharts(root) {
     const render = (view) => {
         charts.forEach((c) => c.destroy());
         container.innerHTML = '';
-        charts = view === 'combined' ? [renderCombined(container, t, available, pick, telemetry)] : renderSeparate(container, t, available, pick, telemetry);
+        charts = view === 'combined' ? renderCombined(container, t, available, pick, telemetry) : renderSeparate(container, t, available, pick, telemetry);
     };
 
     render('separate');
@@ -76,24 +99,39 @@ function renderSeparate(container, t, series, pick, telemetry) {
     });
 }
 
-/** Height, speed and vertical speed on one chart with separate y axes. */
+/** One chart per COMBINED_GROUPS entry, several lines each with their own y axes. */
 function renderCombined(container, t, series, pick, telemetry) {
-    const chosen = series.filter((s) => ['alt', 'speed', 'vs', 'battery'].includes(s.key));
-    const canvas = addPanel(container, 'Combined', 420);
-    const scales = {};
-    const datasets = chosen.map((s, i) => {
-        const axis = `y${i}`;
-        scales[axis] = {
-            position: i % 2 === 0 ? 'left' : 'right',
-            grid: { drawOnChartArea: i === 0 },
-            title: { display: true, text: s.title, color: s.color },
-            ticks: { color: s.color },
-        };
-        const values = pick(telemetry.channels[s.key]).map((v) => (v === null ? null : s.map ? s.map(v) : v));
-        return { ...dataset(s.title, t, values, s.color, false), yAxisID: axis };
-    });
+    const byKey = Object.fromEntries(series.map((s) => [s.key, s]));
 
-    return new Chart(canvas, { type: 'line', data: { datasets }, options: baseOptions(scales, true) });
+    return COMBINED_GROUPS.map((group) => {
+        // Drop axes whose data is missing in this log (e.g. no battery column).
+        const axes = group.axes
+            .map((axis) => ({ ...axis, series: axis.keys.map((k) => byKey[k]).filter(Boolean) }))
+            .filter((axis) => axis.series.length);
+        if (!axes.length) return null;
+
+        const scales = {};
+        const datasets = axes.flatMap((axis, i) => {
+            const id = `y${i}`;
+            // One line on the axis: colour the axis like the line. Shared axis: neutral grey.
+            const color = axis.series.length === 1 ? axis.series[0].color : '#a3a3a3';
+            scales[id] = {
+                position: i % 2 === 0 ? 'left' : 'right',
+                min: axis.min,
+                max: axis.max,
+                grid: { drawOnChartArea: i === 0 },
+                title: { display: true, text: axis.title, color },
+                ticks: { color },
+            };
+            return axis.series.map((s) => {
+                const values = pick(telemetry.channels[s.key]).map((v) => (v === null ? null : s.map ? s.map(v) : v));
+                return { ...dataset(s.title, t, values, s.color, false), yAxisID: id };
+            });
+        });
+
+        const canvas = addPanel(container, group.title, 360);
+        return new Chart(canvas, { type: 'line', data: { datasets }, options: baseOptions(scales, true) });
+    }).filter(Boolean);
 }
 
 function addPanel(container, title, height = 280) {
