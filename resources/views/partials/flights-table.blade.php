@@ -7,7 +7,6 @@
         'showLocation' => true,
         'showWso' => true,
         'withSeconds' => true,                  // date format 18 May 2025, 16:00:00
-        'caption' => 'A list of recent flights.',
     ])
 --}}
 @php
@@ -17,14 +16,12 @@
     $showLocation ??= false;
     $showWso ??= true;
     $withSeconds ??= true;
-    $caption ??= null;
     $offset = method_exists($flights, 'firstItem') ? ($flights->firstItem() ?? 1) - 1 : 0;
     $canManage = auth()->user()->can(\App\Support\Permission::FLIGHTS_MANAGE);
 @endphp
 
 <div class="overflow-x-auto">
     <table class="data-table">
-        @if ($caption)<caption>{{ $caption }}</caption>@endif
         <thead>
         <tr>
             <th class="w-10">#</th>

@@ -1,17 +1,15 @@
 {{--
-    @include('partials.groups-table', ['groups' => $groups, 'actions' => ['present', 'view', 'edit'], 'caption' => null])
+    @include('partials.groups-table', ['groups' => $groups, 'actions' => ['present', 'view', 'edit']])
     $groups needs flights_count (withCount('flights')).
 --}}
 @php
     $actions ??= ['present', 'view', 'edit'];
-    $caption ??= null;
     $offset = method_exists($groups, 'firstItem') ? ($groups->firstItem() ?? 1) - 1 : 0;
     $canManage = auth()->user()->can(\App\Support\Permission::GROUPS_MANAGE);
 @endphp
 
 <div class="overflow-x-auto">
     <table class="data-table">
-        @if ($caption)<caption>{{ $caption }}</caption>@endif
         <thead>
         <tr>
             <th class="w-10">#</th>

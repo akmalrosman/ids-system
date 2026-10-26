@@ -14,8 +14,24 @@ storage/framework/sessions/*
 storage/framework/views/*
 # Cached package/service lists from the dev machine include dev-only packages; the image builds its own.
 bootstrap/cache/*.php
-tests
 .claude
 .cursor
 .idea
 .vscode
+
+# Development-only files the running app never reads.
+tests
+phpunit.xml
+docs
+scripts
+README.md
+AGENTS.md
+CLAUDE.md
+boost.json
+.editorconfig
+.gitattributes
+.gitignore
+docker-compose.yml
+fdr-parser/test
+fdr-parser/tools
+fdr-parser/README.md

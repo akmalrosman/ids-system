@@ -41,9 +41,6 @@
     .data-table tbody tr {
         @apply transition-colors hover:bg-neutral-900/70;
     }
-    .data-table caption {
-        @apply caption-bottom pt-5 text-sm text-neutral-400;
-    }
 
     /* Form controls */
     .form-control {
