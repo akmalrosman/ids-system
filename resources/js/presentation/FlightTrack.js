@@ -52,7 +52,6 @@ export class FlightTrack {
         this.object.name = `flight-${config.id}`;
         this.buildPath();
         this.buildAircraft(template);
-        this.buildDropLine();
 
         this.state = null;
     }
@@ -95,15 +94,6 @@ export class FlightTrack {
             if (child.isMesh) this.meshes.push({ mesh: child, original: child.material, colored: null });
         });
     }
-
-    /** Vertical line from the aircraft to the ground: helps judge height. */
-    buildDropLine() {
-        const geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3));
-        this.dropLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: this.color, transparent: true, opacity: 0.6 }));
-        this.dropLine.frustumCulled = false;
-        this.object.add(this.dropLine);
-    }
-
 
     /** Heading from the ground track, pitch from climb angle, bank from turn rate. */
     attitudeFromPath(ch) {
@@ -176,11 +166,6 @@ export class FlightTrack {
         this.pivot.rotation.set(pitch * DEG, -heading * DEG, -roll * DEG, 'YXZ');
 
         this.trail.geometry.instanceCount = Math.max(0, i + (f > 0 ? 1 : 0));
-
-        const drop = this.dropLine.geometry.attributes.position;
-        drop.setXYZ(0, x, y, z);
-        drop.setXYZ(1, x, 0, z);
-        drop.needsUpdate = true;
 
         this.state = {
             localTime: local,
