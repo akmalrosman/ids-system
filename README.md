@@ -8,7 +8,7 @@ at a time or a whole formation together, with the cockpit video (BVR) synced bes
 | --- | --- |
 | Web app, auth, database | Laravel 13 (PHP 8.4+), Blade, Alpine.js |
 | Styling | Tailwind CSS 4 |
-| Database | PostgreSQL (SQLite works for quick local tries) |
+| Database | PostgreSQL |
 | FDR conversion | Node.js package in [`fdr-parser/`](fdr-parser/README.md) (no npm dependencies) |
 | 3D presentation | Three.js, offline satellite tiles in `public/tiles`, `.glb` aircraft models |
 | Charts | Chart.js |
@@ -17,12 +17,15 @@ at a time or a whole formation together, with the cockpit video (BVR) synced bes
 
 ## 1. Run it on your computer
 
-Requirements: PHP 8.4+ with `pdo_pgsql` (or `pdo_sqlite`), Composer, Node.js 20+, PostgreSQL.
+Requirements: PHP 8.4+ with `pdo_pgsql`, Composer, Node.js 20+, PostgreSQL.
+
+Create a PostgreSQL user `ids` with two databases it owns: `ids` (the app) and `ids_testing`
+(wiped and rebuilt by `php artisan test`). Then:
 
 ```bash
 composer install
 npm install
-cp .env.example .env          # then set DB_* (or DB_CONNECTION=sqlite)
+cp .env.example .env          # then set DB_PASSWORD (and the other DB_* if different)
 php artisan key:generate
 php artisan migrate --seed    # creates demo data and converts the dummy DJI logs
 composer run dev              # web server + queue worker + Vite, together
@@ -41,7 +44,7 @@ Useful commands:
 
 | Command | What it does |
 | --- | --- |
-| `php artisan test` | PHP tests (includes a real FDR upload → Node parser → telemetry run) |
+| `php artisan test` | PHP tests on the `ids_testing` database (includes a real FDR upload → Node parser → telemetry run) |
 | `npm run fdr:test` | Parser unit tests |
 | `npm run fdr:dummy` | Regenerate the dummy DJI logs in `database/sample-data/dji` |
 | `php artisan fdr:process 3` / `--all` | Re-convert one / all FDR files and print the result |
