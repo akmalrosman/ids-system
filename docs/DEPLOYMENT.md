@@ -30,8 +30,9 @@ ADMIN_PASSWORD=choose-another-strong-password
 Generate the app key and start:
 
 ```bash
+# Writes a random APP_KEY into .env (the container refuses to start without one).
+sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" .env
 docker compose build
-docker compose run --rm --no-deps app php artisan key:generate --show   # paste the output into APP_KEY= in .env
 docker compose up -d
 docker compose exec app php artisan db:seed --force                     # roles, aircraft types, admin account
 ```

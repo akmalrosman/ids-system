@@ -8,7 +8,7 @@ mkdir -p storage/app/private storage/app/tmp storage/framework/cache storage/fra
 chown -R www-data:www-data storage bootstrap/cache
 
 if [ -z "$APP_KEY" ]; then
-    echo "APP_KEY is empty. Run: docker compose run --rm app php artisan key:generate --show  and put it in .env" >&2
+    echo "APP_KEY is empty. Set it in .env (see docs/DEPLOYMENT.md), e.g. APP_KEY=base64:\$(openssl rand -base64 32)" >&2
     exit 1
 fi
 
