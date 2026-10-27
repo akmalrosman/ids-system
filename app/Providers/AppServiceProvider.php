@@ -9,6 +9,7 @@ use App\Services\Fdr\NodeHttpFdrParser;
 use App\Support\Permission;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 
@@ -38,7 +39,30 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
 
+        if ($this->app->isProduction()) {
+            $this->useAppUrlForLinks();
+        }
+
         $this->registerPermissions();
+    }
+
+    /**
+     * Build every link and asset URL from APP_URL instead of the incoming request.
+     *
+     * In Docker the server's port (e.g. 8080) is forwarded to port 80 inside the
+     * container, so the request alone would give "http://host/..." without the
+     * port and the browser could not load CSS, JS or links.
+     */
+    private function useAppUrlForLinks(): void
+    {
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        if ($appUrl === '') {
+            return;
+        }
+
+        URL::forceRootUrl($appUrl);
+        URL::forceScheme(parse_url($appUrl, PHP_URL_SCHEME) ?: 'http');
     }
 
     /**
