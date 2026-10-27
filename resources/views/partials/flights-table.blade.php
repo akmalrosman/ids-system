@@ -68,7 +68,7 @@
                 <td>
                     <div class="flex justify-end gap-2">
                         @if (in_array('present', $actions) && $flight->hasTelemetry())
-                            <x-ui.button variant="outline" size="icon" :href="route('flights.present', $flight)" title="Present flight" aria-label="Present flight">
+                            <x-ui.button variant="outline" size="icon" :href="route('flights.present', $flight)" target="_blank" data-present-window title="Present flight" aria-label="Present flight">
                                 <x-icon name="play" class="size-4" />
                             </x-ui.button>
                         @endif

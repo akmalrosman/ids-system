@@ -52,7 +52,7 @@
 
         <input type="range" data-control="timeline" min="0" max="1" step="0.1" value="0" class="min-w-40 flex-1 accent-neutral-100" aria-label="Timeline">
 
-        <a href="{{ $config['closeUrl'] }}" class="inline-flex h-8 items-center gap-1.5 rounded-md bg-red-700 px-3 font-medium text-white hover:bg-red-600">
+        <a href="{{ $config['closeUrl'] }}" data-action="close" class="inline-flex h-8 items-center gap-1.5 rounded-md bg-red-700 px-3 font-medium text-white hover:bg-red-600">
             Close <x-icon name="x" class="size-4" />
         </a>
     </header>

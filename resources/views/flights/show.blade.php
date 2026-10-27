@@ -10,7 +10,7 @@
     <x-ui.page-header :title="'Flight – '.$flight->flight_number">
         <x-slot:actions>
             @if ($flight->hasTelemetry())
-                <x-ui.button variant="outline" :href="route('flights.present', $flight)" icon="play">Present Flight</x-ui.button>
+                <x-ui.button variant="outline" :href="route('flights.present', $flight)" target="_blank" data-present-window icon="play">Present Flight</x-ui.button>
             @endif
             @can(Permission::FLIGHTS_MANAGE)
                 <x-ui.button :href="route('flights.edit', $flight)">Edit Flight</x-ui.button>

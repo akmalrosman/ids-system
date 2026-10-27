@@ -31,7 +31,7 @@
                 <td>
                     <div class="flex justify-end gap-2">
                         @if (in_array('present', $actions) && $group->flights_count > 0)
-                            <x-ui.button variant="outline" size="icon" :href="route('groups.present', $group)" title="Present group" aria-label="Present group">
+                            <x-ui.button variant="outline" size="icon" :href="route('groups.present', $group)" target="_blank" data-present-window title="Present group" aria-label="Present group">
                                 <x-icon name="play" class="size-4" />
                             </x-ui.button>
                         @endif

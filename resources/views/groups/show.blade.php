@@ -2,7 +2,7 @@
     <x-ui.page-header title="Group / Formation Details" :description="$group->description">
         <x-slot:actions>
             @if ($group->flights->contains(fn ($f) => $f->hasTelemetry()))
-                <x-ui.button :href="route('groups.present', $group)" icon="play">Present</x-ui.button>
+                <x-ui.button :href="route('groups.present', $group)" target="_blank" data-present-window icon="play">Present</x-ui.button>
             @endif
             @can(\App\Support\Permission::GROUPS_MANAGE)
                 <x-ui.button variant="outline" :href="route('groups.edit', $group)">Edit Group</x-ui.button>

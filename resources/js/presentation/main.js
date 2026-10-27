@@ -17,6 +17,15 @@ const config = JSON.parse(document.getElementById('presentation-config').textCon
 const loading = root.querySelector('[data-loading]');
 const loadingText = root.querySelector('[data-loading-text]');
 
+// Opened from a "Present" button (its own window): Close shuts the window.
+// Opened by URL / in a tab: the link goes back to the flight or group page.
+root.querySelector('[data-action="close"]').addEventListener('click', (event) => {
+    if (window.opener) {
+        event.preventDefault();
+        window.close();
+    }
+});
+
 const app = new PresentationApp(root.querySelector('[data-scene]'), config);
 window.idsPresentation = app; // handy for debugging in the browser console
 
