@@ -30,6 +30,7 @@ class NodeCliFdrParser implements FdrParser
             '--output', $output,
             '--tz', config('ids.fdr.log_timezone_offset'),
             '--max-rate', (string) config('ids.fdr.max_sample_rate'),
+            '--keychains-dir', config('ids.fdr.keychains_dir'),
         ];
         if ($originalName) {
             array_push($command, '--file-name', $originalName);
@@ -37,10 +38,7 @@ class NodeCliFdrParser implements FdrParser
 
         try {
             $result = Process::timeout(config('ids.fdr.timeout'))
-                ->env(array_filter([
-                    'DJI_LOG_PARSER_CMD' => config('ids.fdr.dji_log_cmd'),
-                    'DJI_API_KEY' => config('ids.fdr.dji_api_key'),
-                ]))
+                ->env(array_filter(['DJI_API_KEY' => config('ids.fdr.dji_api_key')]))
                 ->run($command);
 
             if ($result->failed()) {

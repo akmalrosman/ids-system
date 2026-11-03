@@ -25,7 +25,12 @@ APP_URL=http://your-server-ip:8080
 DB_PASSWORD=choose-a-strong-password
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=choose-another-strong-password
+# Optional, for uploading new real DJI flight records (developer.dji.com, "Open API" app):
+DJI_API_KEY=your-dji-sdk-key
 ```
+
+Encrypted DJI records need internet once per new file to fetch their keys from DJI; the keys are then
+kept in the `ids-files` volume (`storage/app/dji-keychains`). The sample flights ship with their keys.
 
 Generate the app key and start:
 
@@ -45,7 +50,7 @@ Open `http://your-server-ip:8080`.
 | FDR conversion log | `docker compose exec app tail -f storage/logs/fdr-$(date +%F).log` |
 | Update to new code | `git pull && docker compose up -d --build` (migrations run automatically) |
 | Re-convert all FDR files | `docker compose exec app php artisan fdr:process --all` |
-| Load demo flights too | `docker compose exec app php artisan db:seed --class=DemoSeeder --force` |
+| Load the 10 real DJI sample flights | `docker compose exec app php artisan db:seed --class=SampleFlightSeeder --force` |
 | Backup database | `docker compose exec db pg_dump -U ids ids > backup.sql` |
 
 Data lives in Docker volumes: `ids-db` (PostgreSQL), `ids-files` (uploads + telemetry), `ids-logs`.
@@ -83,6 +88,7 @@ sudo git clone <your-repo-url> ids-system && sudo chown -R $USER:www-data ids-sy
 cp .env.production.example .env # fill in the CHANGE ME lines (APP_URL, DB_PASSWORD, ADMIN_*)
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
+npm --prefix fdr-parser ci --omit=dev   # DJI flight record decoder
 php artisan key:generate
 php artisan migrate --seed --force
 php artisan optimize

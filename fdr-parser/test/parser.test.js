@@ -1,5 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseBuffer, FdrError } from '../src/index.js';
 import { parseCsv, splitHeader } from '../src/lib/csv.js';
 import { parseLocalDateTime, parseOffset, parseDurationText, toIsoWithOffset } from '../src/lib/time.js';
@@ -37,8 +41,8 @@ test('unit conversion', () => {
     assert.ok(Math.abs(toSI(10, 'MPH', 'speed') - 4.4704) < 1e-9);
 });
 
-test('parses a DJI CSV flight record into telemetry', () => {
-    const out = parseBuffer(Buffer.from(DJI_CSV), { fileName: 'test.txt', tz: '+08:00', maxRate: 10 });
+test('parses a DJI CSV flight record into telemetry', async () => {
+    const out = await parseBuffer(Buffer.from(DJI_CSV), { fileName: 'test.txt', tz: '+08:00', maxRate: 10 });
 
     assert.equal(out.format, 'ids-telemetry');
     assert.equal(out.source.adapter, 'dji-csv');
@@ -55,26 +59,51 @@ test('parses a DJI CSV flight record into telemetry', () => {
     assert.equal(out.stats.home.lat, 6.3297);
 });
 
-test('generic CSV with lat/lon columns is accepted', () => {
+test('generic CSV with lat/lon columns is accepted', async () => {
     const csv = 'time,lat,lon,alt\n0,5.79,102.48,0\n1,5.7901,102.48,10\n';
-    const out = parseBuffer(Buffer.from(csv));
+    const out = await parseBuffer(Buffer.from(csv));
     assert.equal(out.source.adapter, 'generic-csv');
     assert.equal(out.stats.samples, 2);
     assert.equal(out.startTime, null);
 });
 
-test('unknown files raise UNKNOWN_FORMAT', () => {
-    assert.throws(
-        () => parseBuffer(Buffer.from('foo,bar\n1,2\n')),
+test('unknown files raise UNKNOWN_FORMAT', async () => {
+    await assert.rejects(
+        parseBuffer(Buffer.from('foo,bar\n1,2\n')),
         (e) => e instanceof FdrError && e.code === 'UNKNOWN_FORMAT',
     );
 });
 
-test('binary DJI logs need the external decoder', () => {
+test('broken binary files are rejected with a clear reason', async () => {
     const binary = Buffer.from([0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x8d, 0x00, 0x0e, 0x01, 0x02, 0x03]);
     assert.ok(looksBinary(binary));
-    assert.throws(
-        () => parseBuffer(binary),
-        (e) => e instanceof FdrError && e.code === 'DJI_BINARY_NOT_CONFIGURED',
-    );
+    await assert.rejects(parseBuffer(binary), (e) => e instanceof FdrError && e.code === 'DJI_BINARY_INVALID');
+});
+
+// A real Mavic 3 record (log version 14, encrypted) and the keys DJI returned for it.
+const SAMPLES = fileURLToPath(new URL('../../database/sample-data/dji/', import.meta.url));
+const REAL_LOG = join(SAMPLES, 'FlightRecord_2026-10-12_[12-12-07].txt');
+const SAMPLE_KEYCHAINS = join(SAMPLES, 'keychains');
+
+test('encrypted DJI logs without saved keys need DJI_API_KEY', async () => {
+    const emptyDir = mkdtempSync(join(tmpdir(), 'fdr-keys-'));
+    try {
+        await assert.rejects(
+            parseBuffer(readFileSync(REAL_LOG), { keychainsDir: emptyDir }),
+            (e) => e instanceof FdrError && e.code === 'DJI_API_KEY_MISSING',
+        );
+    } finally {
+        rmSync(emptyDir, { recursive: true, force: true });
+    }
+});
+
+test('encrypted DJI logs decode offline with the saved keys', async () => {
+    const out = await parseBuffer(readFileSync(REAL_LOG), { keychainsDir: SAMPLE_KEYCHAINS });
+
+    assert.equal(out.source.adapter, 'dji-binary');
+    assert.ok(out.stats.samples > 100);
+    assert.ok(out.duration > 60);
+    // Flown in Batu Pahat, Johor.
+    assert.ok(Math.abs(out.stats.home.lat - 1.8) < 0.2, `home lat ${out.stats.home.lat}`);
+    assert.ok(Math.abs(out.stats.home.lng - 103.03) < 0.2, `home lng ${out.stats.home.lng}`);
 });

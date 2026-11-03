@@ -3,13 +3,14 @@
  * Command line converter used by Laravel (App\Services\Fdr\NodeCliFdrParser).
  *
  *   node fdr-parser/bin/fdr-parse.js <input> [--output out.json] [--tz +08:00] [--max-rate 10]
- *                                            [--file-name original.txt] [--pretty]
+ *                                            [--file-name original.txt] [--keychains-dir dir] [--pretty]
  *
  * Without --output the telemetry JSON is printed to stdout.
  * With --output a one-line summary is printed instead.
  * Errors are printed to stderr as {"error": "...", "code": "..."}; exit code 2 = bad file, 1 = crash.
  *
- * Binary DJI logs use the env vars DJI_LOG_PARSER_CMD and DJI_API_KEY.
+ * Encrypted DJI logs need the env var DJI_API_KEY (once per file; with --keychains-dir
+ * the decryption keys are kept there and later runs work offline).
  */
 import { writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
@@ -22,13 +23,14 @@ const { values, positionals } = parseArgs({
         tz: { type: 'string', default: '+08:00' },
         'max-rate': { type: 'string', default: '10' },
         'file-name': { type: 'string' },
+        'keychains-dir': { type: 'string' },
         pretty: { type: 'boolean', default: false },
         help: { type: 'boolean', short: 'h', default: false },
     },
 });
 
 if (values.help || positionals.length !== 1) {
-    console.log('Usage: fdr-parse <input> [--output out.json] [--tz +08:00] [--max-rate 10] [--file-name name] [--pretty]');
+    console.log('Usage: fdr-parse <input> [--output out.json] [--tz +08:00] [--max-rate 10] [--file-name name] [--keychains-dir dir] [--pretty]');
     process.exit(values.help ? 0 : 1);
 }
 
@@ -37,8 +39,8 @@ try {
         fileName: values['file-name'],
         tz: values.tz,
         maxRate: Number(values['max-rate']),
-        djiLogCmd: process.env.DJI_LOG_PARSER_CMD || undefined,
         djiApiKey: process.env.DJI_API_KEY || undefined,
+        keychainsDir: values['keychains-dir'],
     });
 
     const json = JSON.stringify(telemetry, null, values.pretty ? 2 : undefined);

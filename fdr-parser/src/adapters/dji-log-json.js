@@ -1,7 +1,8 @@
 import { FdrError } from '../errors.js';
 
 /**
- * JSON produced by the open-source `dji-log` CLI (github.com/lvauvillier/dji-log-parser):
+ * JSON produced by the open-source `dji-log` CLI (github.com/lvauvillier/dji-log-parser), for logs
+ * decoded elsewhere:
  *   { "version": 14, "details": {...}, "frames": [ { "custom": {...}, "osd": {...}, "battery": {...} } ] }
  * Units are already metric.
  */
@@ -33,28 +34,31 @@ export default {
             droneType: details.productType,
         };
 
-        const samples = frames.map((f) => {
-            const osd = f.osd ?? {};
-            const dateTime = f.custom?.dateTime;
-
-            return {
-                t: osd.flyTime,
-                time: dateTime ? Date.parse(dateTime) : null,
-                lat: osd.latitude,
-                lng: osd.longitude,
-                alt: osd.height,
-                altMsl: osd.altitude,
-                speed: Number.isFinite(osd.xSpeed) && Number.isFinite(osd.ySpeed) ? Math.hypot(osd.xSpeed, osd.ySpeed) : undefined,
-                vs: Number.isFinite(osd.zSpeed) ? -osd.zSpeed : undefined,
-                pitch: osd.pitch,
-                roll: osd.roll,
-                yaw: osd.yaw,
-                battery: f.battery?.chargeLevel,
-                sats: osd.gpsNum,
-                mode: osd.flycState,
-            };
-        });
-
-        return { samples, meta };
+        return { samples: framesToSamples(frames), meta };
     },
 };
+
+/** dji-log frames -> samples. Shared with the dji-binary adapter, which decodes the same frames. */
+export function framesToSamples(frames) {
+    return frames.map((f) => {
+        const osd = f.osd ?? {};
+        const dateTime = f.custom?.dateTime;
+
+        return {
+            t: osd.flyTime,
+            time: dateTime ? Date.parse(dateTime) : null,
+            lat: osd.latitude,
+            lng: osd.longitude,
+            alt: osd.height,
+            altMsl: osd.altitude,
+            speed: Number.isFinite(osd.xSpeed) && Number.isFinite(osd.ySpeed) ? Math.hypot(osd.xSpeed, osd.ySpeed) : undefined,
+            vs: Number.isFinite(osd.zSpeed) ? -osd.zSpeed : undefined,
+            pitch: osd.pitch,
+            roll: osd.roll,
+            yaw: osd.yaw,
+            battery: f.battery?.chargeLevel,
+            sats: osd.gpsNum,
+            mode: osd.flycState,
+        };
+    });
+}

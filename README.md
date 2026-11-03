@@ -25,9 +25,10 @@ Create a PostgreSQL user `ids` with two databases it owns: `ids` (the app) and `
 ```bash
 composer install
 npm install
+npm --prefix fdr-parser install   # DJI flight record decoder used by the parser
 cp .env.example .env          # then set DB_PASSWORD (and the other DB_* if different)
 php artisan key:generate
-php artisan migrate --seed    # creates demo data and converts the dummy DJI logs
+php artisan migrate --seed    # creates demo data and converts the 10 real DJI sample flights
 composer run dev              # web server + queue worker + Vite, together
 ```
 
@@ -46,7 +47,6 @@ Useful commands:
 | --- | --- |
 | `php artisan test` | PHP tests on the `ids_testing` database (includes a real FDR upload → Node parser → telemetry run) |
 | `npm run fdr:test` | Parser unit tests |
-| `npm run fdr:dummy` | Regenerate the dummy DJI logs in `database/sample-data/dji` |
 | `php artisan fdr:process 3` / `--all` | Re-convert one / all FDR files and print the result |
 | `node fdr-parser/bin/fdr-parse.js file.txt --pretty` | Run the parser by hand on any file |
 | `npm run tiles:download -- --preset malaysia` | Download offline map tiles (see §4) |
@@ -77,11 +77,17 @@ a failed conversion shows the parser's reason (e.g. `[UNKNOWN_FORMAT] …`).
 
 ### DJI drone data (current) and aircraft .tkd (later)
 
-Real DJI `DJIFlightRecord_*.txt` files are **binary and encrypted**. The parser accepts:
+Real DJI `FlightRecord_*.txt` files (straight from the DJI app) are **binary and encrypted**. They are
+decoded by the parser itself, with keys fetched from DJI using a free **DJI App Key**:
 
-1. **Decoded DJI CSV** (`OSD.latitude`, `OSD.height [ft]`, …): the dummy files in `database/sample-data/dji` use this layout.
-2. **Real binary `.txt`**: decoded through the open-source `dji-log` CLI with a DJI App Key (set `DJI_LOG_PARSER_CMD` + `DJI_API_KEY`).
-3. dji-log JSON, AirData CSV, or any CSV with `lat`/`lon` columns.
+1. Create an "Open API" app at https://developer.dji.com/user and copy its SDK key.
+2. Put it in `.env` as `DJI_API_KEY=...` (keep it secret, never commit it).
+3. Each new file needs internet once; its keys are then kept in `storage/app/dji-keychains`, so
+   re-processing works offline.
+
+The 10 sample flights in `database/sample-data/dji` ship with their keys, so seeding needs neither
+internet nor an App Key. The parser also accepts decoded DJI CSV, dji-log JSON, AirData CSV, or any
+CSV with `lat`/`lon` columns.
 
 Adding `.tkd` later means one new adapter file. See [fdr-parser/README.md](fdr-parser/README.md).
 
@@ -105,10 +111,10 @@ app/
 config/ids.php                       ALL app settings (parser, map, model, locations)
 database/
   migrations/  seeders/              schema; roles, admin account, demo data
-  sample-data/dji/                   dummy DJI flight logs (used by DemoSeeder and for test uploads)
+  sample-data/dji/                   real DJI Mavic 3 flight records + their keys (SampleFlightSeeder, tests)
 docker/                              nginx, php.ini, supervisor and entrypoint for the Docker image
 docs/DEPLOYMENT.md                   putting it on a server
-fdr-parser/                          Node.js FDR → telemetry converter (+ tests, dummy log generator)
+fdr-parser/                          Node.js FDR → telemetry converter (+ tests)
 public/
   models/su30.glb                    default 3D aircraft model
   tiles/                             offline satellite map tiles + manifest.json

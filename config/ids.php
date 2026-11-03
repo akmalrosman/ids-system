@@ -51,10 +51,11 @@ return [
         // Telemetry is resampled down to this rate (Hz) to keep the JSON small.
         'max_sample_rate' => (int) env('FDR_MAX_SAMPLE_RATE', 10),
 
-        // Real (binary, encrypted) DJI .txt logs are decoded by the external `dji-log` CLI.
-        // See fdr-parser/README.md. Leave empty to only accept decoded CSV/JSON logs.
-        'dji_log_cmd' => env('DJI_LOG_PARSER_CMD'),
+        // Real DJI .txt flight records are encrypted. Their keys are fetched once per file
+        // from DJI with this free App Key (needs internet; see fdr-parser/README.md) and
+        // kept in keychains_dir, so the same file can be processed again offline.
         'dji_api_key' => env('DJI_API_KEY'),
+        'keychains_dir' => env('DJI_KEYCHAINS_DIR', storage_path('app/dji-keychains')),
 
         // Allowed upload extensions and size (kilobytes).
         'extensions' => ['txt', 'csv', 'json'],
@@ -138,6 +139,10 @@ return [
         'Butterworth' => ['lat' => 5.4659, 'lng' => 100.3910],
         'Kuantan' => ['lat' => 3.7754, 'lng' => 103.2094],
         'Labuan' => ['lat' => 5.3007, 'lng' => 115.2500],
+        // Where the real DJI sample flights were flown (database/sample-data/dji).
+        'Batu Pahat' => ['lat' => 1.7480, 'lng' => 102.9880],
+        'Parit Raja' => ['lat' => 1.8558, 'lng' => 103.0848],
+        'Pagoh' => ['lat' => 2.1505, 'lng' => 102.7295],
     ],
 
 ];

@@ -1,19 +1,19 @@
-import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { DJILog } from 'dji-log-parser-js';
 import { FdrError } from '../errors.js';
-import djiLogJson from './dji-log-json.js';
+import { framesToSamples } from './dji-log-json.js';
 
 /**
- * Real DJI flight records (DJIFlightRecord_*.txt) are a *binary*, encrypted
- * format. Since log version 13 the records can only be decrypted with a DJI
- * developer App Key (https://developer.dji.com).
+ * Real DJI flight records (DJIFlightRecord_*.txt) are a *binary* format,
+ * decoded here with the open-source dji-log-parser (npm dji-log-parser-js).
  *
- * We do not decrypt them ourselves; we hand the file to the open-source
- * `dji-log` CLI (github.com/lvauvillier/dji-log-parser), which prints the
- * frames as JSON, and then reuse the dji-log-json adapter.
- *
- * Configure in Laravel .env (passed through to this process):
- *   DJI_LOG_PARSER_CMD="dji-log --api-key {apiKey} {input}"
- *   DJI_API_KEY=your-dji-app-key
+ * Since log version 13 the records are encrypted. The keys ("keychains") are
+ * fetched once from DJI's API with a free DJI App Key (https://developer.dji.com,
+ * env DJI_API_KEY) and need internet. When `keychainsDir` is given, the keys are
+ * saved there as <sha256 of the file>.json, so the same file can later be
+ * processed again (or uploaded again) offline.
  */
 export default {
     id: 'dji-binary',
@@ -23,37 +23,71 @@ export default {
         return looksBinary(buffer);
     },
 
-    parse({ options }) {
-        const template = options.djiLogCmd;
-        if (!template) {
-            throw new FdrError(
-                'DJI_BINARY_NOT_CONFIGURED',
-                'This is an encrypted DJI binary flight record. Set DJI_LOG_PARSER_CMD and DJI_API_KEY in .env ' +
-                    'to decode it with the dji-log CLI, or upload a CSV export of the flight instead.',
-            );
-        }
-        if (!options.inputPath) {
-            throw new FdrError('DJI_BINARY_NEEDS_FILE', 'Binary DJI logs must be parsed from a file path.');
+    async parse({ buffer, options }) {
+        let log;
+        try {
+            log = new DJILog(buffer);
+        } catch (e) {
+            throw new FdrError('DJI_BINARY_INVALID', `This binary file is not a readable DJI flight record: ${errorText(e)}`);
         }
 
-        // Split first, substitute after: no shell is involved, so file names can't inject commands.
-        const [command, ...args] = template
-            .trim()
-            .split(/\s+/)
-            .map((part) => part.replace('{input}', options.inputPath).replace('{apiKey}', options.djiApiKey ?? ''));
+        const keychains = log.version >= 13 ? await loadKeychains(log, buffer, options) : undefined;
 
-        const result = spawnSync(command, args, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 1024 });
-
-        if (result.error) {
-            throw new FdrError('DJI_DECODER_MISSING', `Could not run "${command}": ${result.error.message}`);
-        }
-        if (result.status !== 0) {
-            throw new FdrError('DJI_DECODER_FAILED', `dji-log failed: ${(result.stderr || '').trim().slice(0, 500)}`);
+        let frames;
+        try {
+            frames = log.frames(keychains);
+        } catch (e) {
+            throw new FdrError('DJI_DECODE_FAILED', `The DJI flight record could not be decoded: ${errorText(e)}`);
         }
 
-        return djiLogJson.parse({ text: result.stdout });
+        const details = log.details ?? {};
+        return {
+            samples: framesToSamples(frames),
+            meta: {
+                aircraftName: details.aircraftName,
+                aircraftSn: details.aircraftSn,
+                droneType: details.productType,
+            },
+        };
     },
 };
+
+/** Saved keychains if there are any, otherwise fetched from DJI (and saved). */
+async function loadKeychains(log, buffer, { keychainsDir, djiApiKey }) {
+    const keychainsPath = keychainsDir ? join(keychainsDir, `${createHash('sha256').update(buffer).digest('hex')}.json`) : null;
+
+    if (keychainsPath && existsSync(keychainsPath)) {
+        return JSON.parse(readFileSync(keychainsPath, 'utf8'));
+    }
+
+    if (!djiApiKey) {
+        throw new FdrError(
+            'DJI_API_KEY_MISSING',
+            `This DJI flight record (log version ${log.version}) is encrypted. Set DJI_API_KEY in .env to decode it.`,
+        );
+    }
+
+    let keychains;
+    try {
+        keychains = await log.fetchKeychains(djiApiKey);
+    } catch (e) {
+        throw new FdrError(
+            'DJI_KEYCHAIN_FETCH_FAILED',
+            `Could not get the decryption keys from DJI (needs internet and a valid DJI_API_KEY): ${errorText(e)}`,
+        );
+    }
+
+    if (keychainsPath) {
+        mkdirSync(keychainsDir, { recursive: true });
+        writeFileSync(keychainsPath, JSON.stringify(keychains));
+    }
+    return keychains;
+}
+
+/** The WASM decoder throws plain strings as well as Errors. */
+function errorText(e) {
+    return String(e?.message ?? e).slice(0, 500);
+}
 
 /** True when the first bytes contain control characters that never appear in text logs. */
 export function looksBinary(buffer) {

@@ -2,7 +2,7 @@
 .env
 .env.*
 !.env.example
-node_modules
+**/node_modules
 vendor
 public/build
 public/hot
@@ -30,5 +30,4 @@ README.md
 .gitignore
 docker-compose.yml
 fdr-parser/test
-fdr-parser/tools
 fdr-parser/README.md

@@ -6,7 +6,6 @@
     "build": "vite build",
     "dev": "vite",
     "tiles:download": "node scripts/map-tiles/download-tiles.mjs",
-    "fdr:dummy": "node fdr-parser/tools/generate-dummy-dji.js",
     "fdr:test": "npm --prefix fdr-parser test",
     "fdr:server": "node fdr-parser/bin/fdr-server.js"
   },

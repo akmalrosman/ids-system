@@ -11,9 +11,8 @@ export { FdrError } from './errors.js';
  * @property {string} [fileName]   original upload name, stored in the output
  * @property {string} [tz]         offset of local timestamps in the log, e.g. "+08:00"
  * @property {number} [maxRate]    max samples per second in the output (default 10)
- * @property {string} [inputPath]  path on disk (needed for binary DJI logs)
- * @property {string} [djiLogCmd]  command template for binary DJI logs
- * @property {string} [djiApiKey]  DJI App Key for binary DJI logs
+ * @property {string} [djiApiKey]  DJI App Key, to fetch the keys of encrypted DJI logs
+ * @property {string} [keychainsDir]  folder where those keys are saved / read back (offline reprocessing)
  */
 
 /**
@@ -22,7 +21,7 @@ export { FdrError } from './errors.js';
  * @param {Buffer} buffer
  * @param {ParseOptions} [opts]
  */
-export function parseBuffer(buffer, opts = {}) {
+export async function parseBuffer(buffer, opts = {}) {
     const options = {
         ...opts,
         offsetMinutes: parseOffset(opts.tz ?? '+08:00'),
@@ -31,7 +30,7 @@ export function parseBuffer(buffer, opts = {}) {
 
     const adapter = detectAdapter(buffer);
     const text = adapter.id === 'dji-binary' ? '' : buffer.toString('utf8');
-    const { samples, meta } = adapter.parse({ buffer, text, options });
+    const { samples, meta } = await adapter.parse({ buffer, text, options });
 
     return normalize(samples, meta ?? {}, adapter, options);
 }
@@ -44,5 +43,5 @@ export function parseBuffer(buffer, opts = {}) {
  */
 export async function parseFile(path, opts = {}) {
     const buffer = await readFile(path);
-    return parseBuffer(buffer, { ...opts, fileName: opts.fileName ?? basename(path), inputPath: path });
+    return parseBuffer(buffer, { ...opts, fileName: opts.fileName ?? basename(path) });
 }

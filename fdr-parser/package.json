@@ -14,7 +14,9 @@
   "scripts": {
     "parse": "node bin/fdr-parse.js",
     "start": "node bin/fdr-server.js",
-    "test": "node --test \"test/*.test.js\"",
-    "generate:dummy": "node tools/generate-dummy-dji.js"
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "dji-log-parser-js": "0.5.7"
   }
 }

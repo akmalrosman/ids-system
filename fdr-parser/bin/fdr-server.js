@@ -9,14 +9,11 @@
  *   POST /parse?tz=+08:00&maxRate=10      body = raw file bytes, header X-File-Name = original name
  *        200 -> telemetry JSON | 422 -> {"error","code"} | 500 -> {"error","code"}
  *
+ * Encrypted DJI logs need DJI_API_KEY; DJI_KEYCHAINS_DIR keeps their keys for offline reprocessing.
  * Binds to 127.0.0.1 by default; set HOST=0.0.0.0 only inside a private network (e.g. Docker).
  */
 import { createServer } from 'node:http';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { parseBuffer, FdrError } from '../src/index.js';
-import { looksBinary } from '../src/adapters/dji-binary.js';
 
 const PORT = Number(process.env.PORT ?? 3100);
 const HOST = process.env.HOST ?? '127.0.0.1';
@@ -39,23 +36,11 @@ const server = createServer(async (req, res) => {
             fileName: req.headers['x-file-name'] ? decodeURIComponent(req.headers['x-file-name']) : undefined,
             tz: url.searchParams.get('tz') ?? '+08:00',
             maxRate: Number(url.searchParams.get('maxRate') ?? 10),
-            djiLogCmd: process.env.DJI_LOG_PARSER_CMD || undefined,
             djiApiKey: process.env.DJI_API_KEY || undefined,
+            keychainsDir: process.env.DJI_KEYCHAINS_DIR || undefined,
         };
 
-        // Binary DJI logs are decoded by an external CLI that needs a real file.
-        if (looksBinary(buffer)) {
-            const dir = await mkdtemp(join(tmpdir(), 'fdr-'));
-            try {
-                const inputPath = join(dir, 'input.txt');
-                await writeFile(inputPath, buffer);
-                return send(res, 200, parseBuffer(buffer, { ...options, inputPath }));
-            } finally {
-                await rm(dir, { recursive: true, force: true });
-            }
-        }
-
-        return send(res, 200, parseBuffer(buffer, options));
+        return send(res, 200, await parseBuffer(buffer, options));
     } catch (error) {
         if (error instanceof FdrError) return send(res, 422, error.toJSON());
         console.error(error);

@@ -1,14 +1,14 @@
 # fdr-parser
 
 Node.js (≥ 20) package that converts Flight Data Recorder files into the **ids-telemetry** JSON used by
-the debrief charts and 3D presentation. It has no npm dependencies.
+the debrief charts and 3D presentation. Its one npm dependency is the DJI flight record decoder
+[`dji-log-parser-js`](https://github.com/lvauvillier/dji-log-parser) (MIT); run `npm install` here once.
 
 ```bash
-node bin/fdr-parse.js ../database/sample-data/dji/<file>.txt --pretty         # print JSON
-node bin/fdr-parse.js <file> --output out.json --tz +08:00 --max-rate 10
+node bin/fdr-parse.js "../database/sample-data/dji/<file>.txt" --keychains-dir ../database/sample-data/dji/keychains --pretty
+node bin/fdr-parse.js <file> --output out.json --tz +08:00 --max-rate 10 --keychains-dir <dir>
 node bin/fdr-server.js                                                # optional HTTP service on :3100
 npm test                                                              # unit tests
-node tools/generate-dummy-dji.js                                      # rebuild database/sample-data/dji
 ```
 
 Laravel calls it from `App\Services\Fdr\NodeCliFdrParser` (or `NodeHttpFdrParser` when
@@ -23,7 +23,6 @@ src/index.js            parseFile() / parseBuffer()
 src/adapters/           one file per input format + index.js (detection order)
 src/normalize.js        cleaning, resampling, derived values, stats, output JSON
 src/lib/                csv, units, time, geo helpers
-tools/generate-dummy-dji.js
 test/
 ```
 
@@ -31,30 +30,29 @@ test/
 
 | Adapter | Detected by | Notes |
 | --- | --- | --- |
-| `dji-binary` | binary bytes | Real `DJIFlightRecord_*.txt`. Decoded by the external `dji-log` CLI, see below. |
-| `dji-log-json` | JSON with `"osd"` | Output of `dji-log` |
-| `dji-csv` | `OSD.latitude` header | Decoded DJI flight record (FlightRecord / PhantomHelp CSV). The dummy logs use this. |
+| `dji-binary` | binary bytes | Real DJI `FlightRecord_*.txt` / `DJIFlightRecord_*.txt`, see below. |
+| `dji-log-json` | JSON with `"osd"` | Output of the `dji-log` CLI |
+| `dji-csv` | `OSD.latitude` header | Decoded DJI flight record (FlightRecord / PhantomHelp CSV) |
 | `airdata-csv` | `time(millisecond)` header | AirData UAV export |
 | `generic-csv` | `lat` + `lon` columns | Anything else, e.g. converted aircraft data |
 
 Units in headers (`[ft]`, `[MPH]`, `(feet)`, `[m/s]` …) are converted to SI automatically.
 DJI `OSD.zSpeed` is NED (positive = descending) and is flipped to "positive = climbing".
 
-### Real DJI logs (when you have the drone)
+### Real DJI flight records (encrypted)
 
-Since log version 13, DJI encrypts flight records. To read them:
+Since log version 13 (all current drones, e.g. the Mavic 3 samples) DJI encrypts flight records.
+The decryption keys ("keychains") of each file are fetched from DJI's API:
 
-1. Get a free App Key at https://developer.dji.com (create an "Open API" app).
-2. Install the `dji-log` CLI from https://github.com/lvauvillier/dji-log-parser (prebuilt binaries in Releases).
-3. In Laravel `.env`:
-   ```dotenv
-   DJI_LOG_PARSER_CMD="dji-log --api-key {apiKey} {input}"
-   DJI_API_KEY=your-app-key
-   ```
-   `{input}` and `{apiKey}` are replaced; the command must print the JSON frames to stdout.
-   Check the CLI's `--help` in case its options differ in your version.
+1. Get a free App Key at https://developer.dji.com/user: **Create App**, type **Open API**, activate it
+   from the e-mail, then copy its **SDK key**.
+2. Put it in Laravel's `.env` (never in git): `DJI_API_KEY=...`
+3. The first time a file is processed, the server needs internet to fetch its keys. They are saved as
+   `<sha256 of the file>.json` in `--keychains-dir` (Laravel: `storage/app/dji-keychains`), so
+   processing the same file again, or uploading it again, works offline.
 
-Without this, uploading a binary log fails with the clear reason `DJI_BINARY_NOT_CONFIGURED`.
+Errors: `DJI_API_KEY_MISSING` (no key and no saved keys), `DJI_KEYCHAIN_FETCH_FAILED` (no internet or
+wrong key), `DJI_BINARY_INVALID` / `DJI_DECODE_FAILED` (damaged or unsupported file).
 
 ### Adding the aircraft `.tkd` format later
 
@@ -81,7 +79,7 @@ Samples use SI units: seconds, degrees, metres, m/s. `normalize.js` does the res
 {
   "format": "ids-telemetry",
   "version": 1,
-  "source": { "adapter": "dji-csv", "kind": "drone", "fileName": "…", "aircraftName": "…", "aircraftSerial": "…", "droneType": "…" },
+  "source": { "adapter": "dji-binary", "kind": "drone", "fileName": "…", "aircraftName": "…", "aircraftSerial": "…", "droneType": "…" },
   "startTime": "2025-05-18T16:00:00.000+08:00",   // wall clock of t = 0 (null if the file has no timestamps)
   "duration": 918.4,                               // seconds
   "sampleRate": 5,                                 // samples per second after resampling

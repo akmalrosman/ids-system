@@ -4,8 +4,7 @@ import { rowsToSamples } from './tabular.js';
  * DJI flight record in CSV layout ("OSD.latitude", "OSD.height [ft]", ...).
  *
  * This is what you get when a DJI .txt flight record is decoded by the
- * official DJI FlightRecord tool / PhantomHelp log viewer, and it is the
- * layout of the dummy logs in /database/sample-data/dji.
+ * official DJI FlightRecord tool / PhantomHelp log viewer.
  */
 export default {
     id: 'dji-csv',

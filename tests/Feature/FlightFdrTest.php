@@ -19,41 +19,43 @@ class FlightFdrTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SAMPLE = 'database/sample-data/dji/DJIFlightRecord_2025-05-18_[16-00-00]_5201.txt';
+    /** A real, encrypted DJI Mavic 3 record. Its saved keys let it decode without internet. */
+    private const SAMPLE = 'database/sample-data/dji/FlightRecord_2026-10-12_[12-12-07].txt';
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->seedBasics();
         Storage::fake(config('ids.disk'));
+        config(['ids.fdr.keychains_dir' => base_path('database/sample-data/dji/keychains')]);
     }
 
-    public function test_uploading_a_dji_log_produces_telemetry(): void
+    public function test_uploading_a_real_dji_flight_record_produces_telemetry(): void
     {
         $admin = $this->userWithRole(Role::SUPER_ADMIN);
         $aircraft = $this->makeAircraft();
 
         $response = $this->actingAs($admin)->post('/flights', [
             'aircraft_id' => $aircraft->id,
-            'flight_number' => '4001',
+            'flight_number' => '6',
             'shift_number' => 1,
-            'location' => 'Langkawi',
-            'flown_at' => '2025-05-18 16:00:00',
-            'fdr' => new UploadedFile(base_path(self::SAMPLE), 'DJIFlightRecord_test.txt', 'text/plain', null, true),
+            'location' => 'Batu Pahat',
+            'flown_at' => '2026-10-12 12:12:07',
+            'fdr' => new UploadedFile(base_path(self::SAMPLE), 'FlightRecord_test.txt', 'text/plain', null, true),
         ]);
 
         $flight = Flight::firstOrFail();
         $response->assertRedirect("/flights/{$flight->id}");
 
         $this->assertSame(FdrStatus::Ready, $flight->fdr_status, (string) $flight->fdr_error);
-        $this->assertEqualsWithDelta(918.4, $flight->duration_seconds, 1);
-        $this->assertSame('2025-05-18T16:00:00.000+08:00', $flight->stats['start_time']);
+        $this->assertEqualsWithDelta(597.2, $flight->duration_seconds, 1);
+        $this->assertSame('2026-10-12T12:12:07.632+08:00', $flight->stats['start_time']);
         Storage::disk(config('ids.disk'))->assertExists($flight->telemetry_path);
 
         $this->actingAs($admin)->getJson("/flights/{$flight->id}/telemetry")
             ->assertOk()
             ->assertJsonPath('format', 'ids-telemetry')
-            ->assertJsonPath('source.adapter', 'dji-csv');
+            ->assertJsonPath('source.adapter', 'dji-binary');
 
         $this->actingAs($admin)->get("/flights/{$flight->id}")->assertOk()->assertSee('Present Flight');
         $this->actingAs($admin)->get("/flights/{$flight->id}/present")->assertOk()->assertSee('presentation-config', false);

@@ -21,7 +21,13 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-in
 COPY . .
 RUN composer dump-autoload --optimize --classmap-authoritative --no-dev --no-scripts
 
-# ---- 3. Runtime --------------------------------------------------------------------
+# ---- 3. fdr-parser dependencies (DJI flight record decoder) ----------------------
+FROM node:22-bookworm-slim AS parser
+WORKDIR /app
+COPY fdr-parser/package.json fdr-parser/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+# ---- 4. Runtime --------------------------------------------------------------------
 FROM php:8.4-fpm-bookworm
 
 RUN apt-get update \
@@ -29,7 +35,7 @@ RUN apt-get update \
     && docker-php-ext-install pdo_pgsql intl zip opcache bcmath pcntl \
     && rm -rf /var/lib/apt/lists/*
 
-# Node.js runtime for fdr-parser (no npm packages needed: the parser has zero dependencies)
+# Node.js runtime for fdr-parser (its packages come from the "parser" stage)
 COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-ids.ini
@@ -41,6 +47,7 @@ WORKDIR /var/www/html
 COPY --chown=www-data:www-data . .
 COPY --from=vendor --chown=www-data:www-data /app/vendor ./vendor
 COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
+COPY --from=parser --chown=www-data:www-data /app/node_modules ./fdr-parser/node_modules
 
 # package:discover lists only the production packages installed above (no dev tools).
 RUN chmod +x /usr/local/bin/ids-entrypoint \
