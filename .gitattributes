@@ -1,5 +1,8 @@
 * text=auto eol=lf
 
+# Real DJI flight records are binary despite the .txt name: never convert line endings.
+database/sample-data/dji/*.txt binary
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html
